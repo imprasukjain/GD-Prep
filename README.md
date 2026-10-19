@@ -1,4 +1,4 @@
-# GD Room
+# Placement Prep One-Stop
 
 Speaking practice in a single static page: no backend, no database, no login. It has two modes, switched with the tabs at the top.
 

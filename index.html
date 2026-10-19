@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="light only">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<title>Yap · GD Room</title>
+<title>Yap · Placement Prep One-Stop</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -177,7 +177,7 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand">GD Room <small id="brandSub">speaking practice for MBA placement interviews</small></div>
+    <div class="brand">Placement Prep One-Stop <small id="brandSub">speaking practice for MBA placement interviews</small></div>
     <div class="seg tabs" role="group" aria-label="Practice mode">
       <button type="button" id="tabGd" aria-pressed="false">GD Room</button>
       <button type="button" id="tabYap" aria-pressed="true">Yap: daily speaking</button>
@@ -1355,7 +1355,7 @@ function setTab(name,save=true){
   $("gdApp").hidden=yap; $("yapApp").hidden=!yap;
   $("tabGd").setAttribute("aria-pressed",String(!yap)); $("tabYap").setAttribute("aria-pressed",String(yap));
   $("brandSub").textContent = yap ? "speaking practice for MBA placement interviews" : "group discussion practice for MBA placements";
-  document.title = yap ? "Yap · GD Room" : "GD Room";
+  document.title = (yap ? "Yap" : "GD Room")+" · Placement Prep One-Stop";
   if(save){ try{ localStorage.setItem("app.tab",name); }catch{} }
 }
 document.addEventListener("app:leave",()=>{

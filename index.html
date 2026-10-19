@@ -153,14 +153,37 @@ details.said p{white-space:pre-wrap; margin:8px 0 0}
 .callout b{display:block; font-size:14px; color:var(--muted); font-weight:600}
 .status{color:var(--muted); font-size:15px}
 footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
+
+/* tabs */
+.tabs button{font-weight:600}
+.tabs button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
+#gdApp[hidden],#yapApp[hidden]{display:none}
+
+/* yap */
+.yap-intro{margin:0 0 18px; color:var(--muted); max-width:70ch}
+#yEnv{margin:0 0 18px}
+.qcard{background:radial-gradient(circle at 30% 20%, var(--felt) 0%, var(--felt-2) 100%); color:var(--felt-ink); border-radius:20px; padding:28px 26px; min-height:240px; display:grid; align-content:center; gap:12px; box-shadow:0 18px 40px -24px rgba(0,0,0,.45)}
+.qcard .tag{font-size:13px; letter-spacing:.04em; text-transform:uppercase; opacity:.8}
+.qcard .q{font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:clamp(21px,3vw,29px); line-height:1.2; text-wrap:balance}
+.signals{list-style:none; margin:10px 0 0; padding:0; display:grid; gap:8px; font-size:15px}
+.signals li{display:grid; grid-template-columns:24px 1fr; gap:8px; align-items:start}
+.signals .ic{font-weight:700; text-align:center}
+.signals .ic.good{color:var(--ok)} .signals .ic.warn{color:var(--brass-ink)}
+.metric .s{font-size:12.5px; color:var(--muted); margin-top:2px}
+#yapApp [hidden]{display:none !important}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand">GD Room <small>group discussion practice for MBA placements</small></div>
+    <div class="brand">GD Room <small id="brandSub">group discussion practice for MBA placements</small></div>
+    <div class="seg tabs" role="group" aria-label="Practice mode">
+      <button type="button" id="tabGd" aria-pressed="true">GD Room</button>
+      <button type="button" id="tabYap" aria-pressed="false">Yap: daily speaking</button>
+    </div>
   </header>
 
+  <div id="gdApp">
   <details class="settings" id="settings">
     <summary><span>Gemini settings <span class="key-state" id="keyState"></span></span></summary>
     <div class="set-body">
@@ -237,6 +260,79 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
   </section>
 
   <footer>Nothing is saved: each round is gone when you leave or start the next one. With a Gemini key, your recording is sent to Google for transcription and feedback; on the API’s free tier Google may use that content to improve its products. Without a key, your browser’s own speech recognition is used and only delivery metrics are shown.</footer>
+  </div>
+  <div id="yapApp" hidden>
+    <p class="yap-intro">Pick a topic, think for a few seconds, then talk for a minute. You get a delivery score for pace, fillers and staying power, plus keyword signals on what you said. No AI and no key. Scoring runs in this page; only your browser’s own speech service hears you.</p>
+    <div class="notice" id="yEnv"></div>
+
+    <section class="room">
+      <div>
+        <div class="qcard" id="yCard">
+          <div class="tag" id="yTag">Your question appears here</div>
+          <div class="q" id="yQ">Pick a topic and a level, then hit “Give me a question”.</div>
+        </div>
+        <div class="actions" style="margin-top:14px">
+          <button class="btn brass" id="yStart" type="button" disabled>Start yapping</button>
+          <button class="btn ghost" id="yShuffle" type="button" disabled>Another question</button>
+          <button class="btn ghost small" id="yChallenge" type="button" disabled>Challenge a friend</button>
+        </div>
+        <p class="hint" id="yHint"></p>
+      </div>
+
+      <div class="controls">
+        <div class="group">
+          <h2><label for="yCat">Topic</label></h2>
+          <div class="model-row"><select class="field" id="yCat"></select><button class="btn ghost small" id="ySurprise" type="button">Surprise me</button></div>
+        </div>
+        <div class="group"><h2 id="yLvlLbl">Level</h2><div class="seg" id="yLevels" role="group" aria-labelledby="yLvlLbl"></div><p class="hint" id="yLvlHint"></p></div>
+        <div class="group"><h2 id="ySecsLbl">Speak for</h2><div class="seg" id="ySecs" role="group" aria-labelledby="ySecsLbl"></div></div>
+        <div class="group"><h2 id="yPrepLbl">Think time</h2><div class="seg" id="yPreps" role="group" aria-labelledby="yPrepLbl"></div></div>
+        <div class="actions"><button class="btn" id="yDraw" type="button">Give me a question</button></div>
+        <p class="hint" id="yStreak"></p>
+      </div>
+    </section>
+
+    <section class="stage" id="yStage" hidden aria-live="polite">
+      <div class="stage-head">
+        <div class="clock" id="yClock">
+          <svg width="84" height="84" viewBox="0 0 84 84"><circle class="track" cx="42" cy="42" r="36"/><circle class="prog" id="yProg" cx="42" cy="42" r="36" stroke-dasharray="226.2" stroke-dashoffset="0"/></svg>
+          <div class="num" id="yClockNum">0</div>
+        </div>
+        <div style="flex:1; min-width:180px"><div class="stage-title" id="yStageTitle"></div><div class="stage-sub" id="yStageSub"></div></div>
+        <button class="btn ghost" id="yStop" type="button">Finish now</button>
+      </div>
+      <div class="transcript" id="yTranscript" data-empty=""></div>
+      <div class="notice" id="yNotice"></div>
+    </section>
+
+    <section class="results" id="yResults" hidden>
+      <h2>How you sounded</h2>
+      <p class="hint" style="margin:-8px 0 14px">A delivery score: pace, fillers and staying power. It doesn’t judge what you said; the signals further down only spot keywords.</p>
+      <div class="notice" id="yWarn"></div>
+      <div class="verdict" id="yVerdict">
+        <div class="big" id="yScore">0<small>/100</small></div>
+        <div><b id="yBand"></b><div class="hint" id="yBandNote" style="margin-top:2px"></div></div>
+      </div>
+      <div class="metrics" id="yMetrics"></div>
+      <div class="callout"><b id="yPaceHead">Pace</b><div id="yPace"></div></div>
+      <div class="callout"><b>Next rep, try this</b><div id="yTip"></div></div>
+      <div class="panel" id="ySignalsWrap">
+        <div class="panel-head"><h3>What you said, in signals</h3></div>
+        <p class="hint" style="margin-top:4px">Keyword patterns, not understanding. Treat them as nudges, not a verdict.</p>
+        <ul class="signals" id="ySignals"></ul>
+      </div>
+      <details class="said" id="ySaid"><summary>What the speech engine heard</summary><p id="ySaidText"></p></details>
+      <div class="actions" style="margin-top:22px">
+        <button class="btn" id="yAgain" type="button">Try again</button>
+        <button class="btn ghost" id="yNext" type="button">New question</button>
+        <button class="btn ghost" id="yCardBtn" type="button">Save score card</button>
+        <button class="btn ghost" id="yChallenge2" type="button">Challenge a friend</button>
+      </div>
+      <p class="hint" id="yShareMsg" aria-live="polite"></p>
+    </section>
+
+    <footer>Yap uses your browser’s built-in speech recognition (Chrome and Edge send the audio to Google, Safari to Apple; Firefox doesn’t support it). Nothing is sent to this site, and nothing is saved except a count of the days you practised, kept in this browser for your streak.</footer>
+  </div>
 </div>
 
 <script>
@@ -747,6 +843,11 @@ function renderPanel(v){
 }
 
 /* ================= wire up ================= */
+document.addEventListener("app:leave",()=>{
+  clearInterval(timer);
+  if(S.recording){ S.recording=false; try{ rec&&rec.abort(); }catch{} try{ recorder&&recorder.state!=="inactive"&&recorder.stop(); }catch{} stopStream(); }
+  if(!$("stage").hidden){ hide("stage"); drawSeats(spokenCount()); }
+});
 loadCfg();
 chips();
 seg($("levels"),LEVELS,"lvl");
@@ -770,6 +871,522 @@ $("evalTyped").onclick=()=>{ if(!$("typed").value.trim()){ setNotice("Write your
 $("panelBtn").onclick=runPanel;
 $("againBtn").onclick=()=>{ hide("results"); startRound(); };
 $("nextBtn").onclick=()=>{ draw(false); window.scrollTo({top:0,behavior:"auto"}); };
+})();
+</script>
+<script>
+(() => {
+"use strict";
+
+/* ================= topic bank ================= */
+const YCATS = [
+  {id:"everyday",emoji:"☀️",label:"Everyday life",group:"talk"},
+  {id:"work",emoji:"💼",label:"Work & study",group:"talk"},
+  {id:"money",emoji:"💸",label:"Money",group:"talk"},
+  {id:"tech",emoji:"📱",label:"Tech",group:"talk"},
+  {id:"travel",emoji:"🧳",label:"Travel",group:"talk"},
+  {id:"food",emoji:"🍲",label:"Food",group:"talk"},
+  {id:"people",emoji:"🤝",label:"Friends & relationships",group:"talk"},
+  {id:"health",emoji:"🫀",label:"Health & habits",group:"talk"},
+  {id:"growth",emoji:"🌱",label:"Self growth",group:"talk"},
+  {id:"create",emoji:"🎨",label:"Creativity & content",group:"talk"},
+  {id:"hot",emoji:"🌶️",label:"Hot takes",group:"fun"},
+  {id:"wyr",emoji:"⚖️",label:"Would you rather",group:"fun"},
+  {id:"deep",emoji:"🌊",label:"Deep questions",group:"fun"},
+  {id:"story",emoji:"📖",label:"Storytime",group:"fun"},
+  {id:"pitch",emoji:"🎤",label:"Sell it to me",group:"fun"}
+];
+const YLEVELS = [{id:"e",label:"Easy",hint:"Just get talking."},{id:"m",label:"Mid",hint:"Think a little first."},{id:"h",label:"Hard",hint:"Take a stand and defend it."}];
+const Q = (cat,lvl,list) => list.map((t,i)=>({id:`${cat}-${lvl}${i}`,cat,lvl,t}));
+const YTOPICS = [
+  ...Q("everyday","e",["Describe your perfect lazy Sunday.","What’s one thing you always carry with you, and why?","Talk about the best thing that happened to you this week.","Walk me through your morning routine, honestly."]),
+  ...Q("everyday","m",["Which household chore is secretly satisfying, and why?","What small habit has made your life noticeably better?","Describe your neighbourhood to someone who’s never been there.","What’s something everyone does that you’ve never understood?"]),
+  ...Q("everyday","h",["Convince me that boredom is good for people.","If you had to drop one daily routine forever, which goes and what changes?","Defend your most unpopular everyday opinion.","What does an ordinary day say about who you are?"]),
+  ...Q("work","e",["What was your first job or first real responsibility?","Describe your dream workspace.","What’s the best advice a teacher or boss ever gave you?","Talk about a skill you picked up without trying."]),
+  ...Q("work","m",["Tell me about a time you had to learn something fast.","What makes a meeting worth having?","Introduce yourself as if you’re meeting a new team.","What’s a mistake you made at work or college, and what did it teach you?"]),
+  ...Q("work","h",["Should everyone work a customer-facing job once? Make the case.","Explain what you do or study to a ten-year-old.","Pitch yourself for a role you’re not qualified for yet.","Is ambition overrated? Take a side."]),
+  ...Q("money","e",["What’s the best cheap thing you’ve ever bought?","Saver or spender: which are you?","What would you do with an unexpected bonus?","What’s something you’ll always pay extra for?"]),
+  ...Q("money","m",["What did your family teach you about money, on purpose or not?","Explain compound interest like you’re talking to a friend.","Is renting really throwing money away?","What’s a purchase you regret, and why?"]),
+  ...Q("money","h",["Should schools teach investing before algebra? Argue it.","Is it ever smart to take on debt? When?","Make the case for or against splitting the bill evenly.","What’s the real cost of “buy now, pay later”?"]),
+  ...Q("tech","e",["Which app could you not live without?","What was the first gadget you were obsessed with?","Describe your phone’s home screen and what it says about you.","What piece of tech would you un-invent?"]),
+  ...Q("tech","m",["Should kids get smartphones before fourteen?","What’s one thing AI should never be allowed to do?","Explain how the internet works in under a minute.","Is screen time a real problem or a moral panic?"]),
+  ...Q("tech","h",["Make the case that social media made us smarter.","Would you let an AI choose your next career move? Why or why not?","Who should own the data you create?","Predict one way daily life changes in ten years, and defend it."]),
+  ...Q("travel","e",["Describe a place you’d love to go back to.","Window or aisle? Defend your choice.","What’s the best meal you’ve had on a trip?","Plan a perfect day in your own city for a visitor."]),
+  ...Q("travel","m",["Tell me about a trip that went wrong.","Solo travel or group travel: which teaches you more?","What’s a place that surprised you?","Sell me on visiting your hometown."]),
+  ...Q("travel","h",["Is travel overrated? Make the case.","Should tourist hotspots cap visitor numbers?","What does travel actually change in a person, if anything?","Describe a culture-shock moment and what it taught you."]),
+  ...Q("food","e",["What’s your go-to comfort food?","Describe the best thing you can cook.","Sweet or savoury breakfast?","What dish reminds you of home?"]),
+  ...Q("food","m",["Defend a food combination other people find weird.","What’s a food you hated as a kid but love now?","Street food or restaurants: which wins?","Describe a meal using all five senses."]),
+  ...Q("food","h",["Should everyone learn to cook before they leave home? Argue it.","Is a food trend ruining a classic dish? Pick one.","Make the case for or against eating meat.","Review your last meal like a harsh food critic."]),
+  ...Q("people","e",["Who’s someone who always makes you laugh?","Describe your best friend in three words, then explain them.","What’s a compliment you still remember?","How do you like to celebrate birthdays?"]),
+  ...Q("people","m",["What makes someone a good listener?","Talk about a friendship that changed over time.","What’s a green flag in a new friend?","How do you handle a disagreement with someone close?"]),
+  ...Q("people","h",["Can you stay friends with an ex? Take a side.","Is honesty always the best policy in a relationship?","Tell me about someone who changed your mind about something.","Should you ever tell a friend their partner is wrong for them?"]),
+  ...Q("health","e",["What’s your favourite way to move your body?","How do you wind down after a long day?","What’s one healthy habit you’re proud of?","Morning workout or evening workout?"]),
+  ...Q("health","m",["What’s a wellness trend you think is nonsense?","How has your relationship with sleep changed?","Describe how stress shows up for you.","What does taking a real break look like for you?"]),
+  ...Q("health","h",["Is rest a skill? Argue for or against.","Should workplaces be responsible for employee mental health?","Defend or destroy the idea of “no pain, no gain”.","What would you tell your younger self about health?"]),
+  ...Q("growth","e",["What’s something new you learned recently?","What’s a goal you’re working toward right now?","What makes you feel confident?","Name a book, video or podcast that stuck with you."]),
+  ...Q("growth","m",["Talk about a fear you’ve faced.","What’s a belief you’ve changed your mind about?","How do you deal with failure?","What does discipline mean to you?"]),
+  ...Q("growth","h",["Is “follow your passion” good advice? Argue it.","What’s the hardest feedback you’ve received, and what did you do with it?","Describe the person you want to be in five years.","Is comparing yourself to others always bad?"]),
+  ...Q("create","e",["What kind of video could you watch all day?","Describe a creator or artist you admire.","If you started a channel tomorrow, what would it be about?","What’s a song you could play on repeat?"]),
+  ...Q("create","m",["Explain your hobby so someone else wants to try it.","What makes a story hard to stop watching?","Open a video about your day with a one-line hook, then keep going.","What’s something you’ve made that you’re proud of?"]),
+  ...Q("create","h",["Is going viral good or bad for a creator? Take a side.","Should creators show their real life or a curated one?","Pitch a short video series in under a minute.","Can creativity be taught? Defend your answer."]),
+  ...Q("hot","e",["Pineapple on pizza: defend your side.","Is breakfast the most important meal, or a myth?","Cats or dogs, and why are you right?","Socks with sandals: crime or comfort?"]),
+  ...Q("hot","m",["Is it rude to keep your camera off on video calls?","Sequels are usually better than originals. Agree or disagree?","Is texting better than calling?","Should tipping be abolished?"]),
+  ...Q("hot","h",["Is hustle culture inspiring or harmful?","Should homework be banned?","Are influencers the new celebrities, and is that a problem?","Is leaving someone on read ever okay?"]),
+  ...Q("wyr","e",["Would you rather always be ten minutes early or ten minutes late?","Would you rather live by the beach or in the mountains?","Would you rather give up music or movies?","Would you rather be able to fly or be invisible?"]),
+  ...Q("wyr","m",["Would you rather know the future or change the past?","Would you rather be famous or rich, but never both?","Would you rather speak every language or play every instrument?","Would you rather work four long days or six short ones?"]),
+  ...Q("wyr","h",["Would you rather be loved by many or understood by one?","Would you rather always tell the truth or never be lied to?","Would you rather relive your best year or skip your worst?","Would you rather have more time or more money?"]),
+  ...Q("deep","e",["What does a good day mean to you?","What are you grateful for today?","What always calms you down?","What does home feel like?"]),
+  ...Q("deep","m",["What do you want to be remembered for?","When do you feel most like yourself?","What’s a question you wish people asked you more?","What does success look like to you right now?"]),
+  ...Q("deep","h",["Is it better to be right or to be kind?","Does everything happen for a reason?","What would you do if you weren’t afraid?","What’s something you believe that most people don’t?"]),
+  ...Q("story","e",["Tell me about your most embarrassing moment.","Tell the story of how you got your name or nickname.","What’s the funniest thing that happened to you at school?","Tell me about a time you got lost."]),
+  ...Q("story","m",["Tell me about a moment you were really proud of.","Tell the story of a risk you took.","Tell me about a time a stranger helped you.","Describe a day that didn’t go to plan."]),
+  ...Q("story","h",["Tell me about a decision that changed your direction.","Tell a story where you were the villain.","Tell me about a time you had to say no.","Describe the moment you realised you’d grown up."]),
+  ...Q("pitch","e",["Sell me the pen nearest to you.","Convince me to try your favourite snack.","Pitch your favourite movie.","Sell me on waking up early."]),
+  ...Q("pitch","m",["Convince me to take up your hobby.","Pitch a brand-new holiday and how we’d celebrate it.","Sell me a slightly broken umbrella.","Convince a sceptic to start journaling."]),
+  ...Q("pitch","h",["Pitch an app that fixes an annoying daily problem.","Convince me to vote for you as captain of anything.","Sell me on a city nobody wants to visit.","Pitch a product that doesn’t exist yet and make me want it."])
+];
+const SECS = [{id:30,label:"30 s"},{id:60,label:"60 s"},{id:90,label:"90 s"}];
+const PREPS = [{id:0,label:"None"},{id:10,label:"10 s"},{id:30,label:"30 s"}];
+
+/* ================= state ================= */
+const Y = {cat:YCATS[Math.floor(Math.random()*YCATS.length)].id, lvl:"e", secs:60, prep:10, q:null, challenged:false, running:false, phase:"idle", started:0, last:null};
+const used = {};
+const $ = id => document.getElementById(id);
+const hide = id => { $(id).hidden=true; }, show = id => { $(id).hidden=false; };
+const catOf = id => YCATS.find(c=>c.id===id);
+const lvlOf = id => YLEVELS.find(l=>l.id===id);
+const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+/* ================= environment check ================= */
+function envCheck(){
+  const ua=navigator.userAgent||"";
+  const inApp=[[/Instagram/i,"Instagram"],[/FBAN|FBAV|FB_IAB/i,"Facebook"],[/LinkedInApp/i,"LinkedIn"],[/Twitter/i,"X"],[/Snapchat/i,"Snapchat"],[/TikTok|musical_ly|Bytedance/i,"TikTok"],[/; wv\)/i,"an in-app browser"]].find(([re])=>re.test(ua));
+  if(inApp) return `You’re inside ${inApp[1]}’s built-in browser, which blocks speech recognition. Open this page in Chrome or Safari to get a score.`;
+  if(!SR) return "This browser has no built-in speech recognition (Firefox doesn’t). Open the page in Chrome, Edge or Safari to get a score. You can still use the timer here.";
+  return "";
+}
+
+/* ================= pickers ================= */
+function segY(el,items,key,onPick){
+  el.innerHTML="";
+  items.forEach(it=>{
+    const b=document.createElement("button"); b.type="button"; b.textContent=it.label; b.setAttribute("aria-pressed",String(Y[key]===it.id));
+    b.addEventListener("click",()=>{ Y[key]=it.id; [...el.children].forEach(c=>c.setAttribute("aria-pressed","false")); b.setAttribute("aria-pressed","true"); onPick&&onPick(); });
+    el.appendChild(b);
+  });
+}
+function fillCats(){
+  const sel=$("yCat"); sel.innerHTML="";
+  [["talk","Talk about"],["fun","Just for fun"]].forEach(([g,label])=>{
+    const og=document.createElement("optgroup"); og.label=label;
+    YCATS.filter(c=>c.group===g).forEach(c=>{ const o=document.createElement("option"); o.value=c.id; o.textContent=`${c.emoji} ${c.label}`; og.appendChild(o); });
+    sel.appendChild(og);
+  });
+  sel.value=Y.cat;
+}
+const lvlHint = () => { $("yLvlHint").textContent=lvlOf(Y.lvl).hint; };
+
+function pick(cat,lvl){
+  const pool=YTOPICS.filter(t=>t.cat===cat&&t.lvl===lvl), k=cat+"|"+lvl;
+  const seen=used[k]||(used[k]=new Set());
+  let left=pool.filter(t=>!seen.has(t.id));
+  if(!left.length){ seen.clear(); left=pool.filter(t=>!Y.q||t.id!==Y.q.id); }
+  const q=left[Math.floor(Math.random()*left.length)]; seen.add(q.id); return q;
+}
+function showQ(q,challenged){
+  Y.q=q; Y.challenged=!!challenged;
+  const c=catOf(q.cat);
+  $("yTag").textContent=(challenged?"A friend challenged you · ":"")+`${c.emoji} ${c.label} · ${lvlOf(q.lvl).label}`;
+  $("yQ").textContent=q.t;
+  ["yStart","yShuffle","yChallenge"].forEach(id=>$(id).disabled=false);
+  $("yHint").textContent=""; hide("yResults"); hide("yStage");
+}
+function draw(){ showQ(pick(Y.cat,Y.lvl)); }
+function surprise(){
+  Y.cat=YCATS[Math.floor(Math.random()*YCATS.length)].id; Y.lvl=YLEVELS[Math.floor(Math.random()*3)].id;
+  $("yCat").value=Y.cat; segY($("yLevels"),YLEVELS,"lvl",lvlHint); lvlHint(); draw();
+}
+
+/* ================= clock ================= */
+const CIRC=226.2; let timer=null;
+function setClock(left,total,cls){
+  $("yClockNum").textContent=Math.max(0,Math.ceil(left));
+  $("yProg").style.strokeDashoffset=String(CIRC*(1-Math.max(0,left)/total));
+  $("yClock").className="clock"+(cls?" "+cls:"");
+}
+function chime(){
+  try{
+    const ac=new (window.AudioContext||window.webkitAudioContext)();
+    [660,990].forEach((f,i)=>{ const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=f;
+      g.gain.setValueAtTime(.0001,ac.currentTime+i*.12); g.gain.exponentialRampToValueAtTime(.2,ac.currentTime+i*.12+.02); g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+i*.12+.9);
+      o.connect(g).connect(ac.destination); o.start(ac.currentTime+i*.12); o.stop(ac.currentTime+i*.12+1); });
+    setTimeout(()=>ac.close&&ac.close(),1600);
+  }catch{}
+}
+const notice = t => { $("yNotice").textContent=t||""; };
+
+/* ================= speech capture ================= */
+// The browser engine restarts every few seconds, tends to drop "um"/"uh" from its final text,
+// and on Android can resend text it already gave us. This layer smooths all three.
+let rec=null, heard="", live="", lostFillers=0, errs=0, gapMs=0, endedAt=0, restarts=0;
+const SOUND_RE=/^(?:u+m+|u+h+|e+r+m*|a+h+|h+m+)$/;
+const norm = w => w.toLowerCase().replace(/[‘’]/g,"'").replace(/[^\w']/g,"");
+const soundCount = t => t.split(/\s+/).filter(w=>SOUND_RE.test(norm(w))).length;
+const lang = () => ([navigator.language,...(navigator.languages||[])].find(l=>typeof l==="string"&&/^en[-_]/i.test(l))||"en-US").replace("_","-");
+
+function append(t){
+  const have=heard.split(/\s+/).filter(Boolean).map(norm), add=t.split(/\s+/).filter(Boolean);
+  const addN=add.map(norm);
+  if(have.length>=addN.length && addN.length>=4 && have.slice(-addN.length).join(" ")===addN.join(" ")) return; // pure resend
+  let cut=0;
+  for(let k=Math.min(have.length,addN.length);k>=4;k--){ if(have.slice(-k).join(" ")===addN.slice(0,k).join(" ")){ cut=k; break; } }
+  const rest=add.slice(cut).join(" ");
+  if(rest) heard=(heard+" "+rest).trim();
+}
+function paint(){
+  const el=$("yTranscript"); el.textContent=heard;
+  if(live){ const s=document.createElement("span"); s.className="interim"; s.textContent=(heard?" ":"")+live; el.appendChild(s); }
+}
+function session(){
+  let r; try{ r=new SR(); }catch{ return false; }
+  r.continuous=true; r.interimResults=true; r.lang=lang(); try{ r.maxAlternatives=1; }catch{}
+  const done=new Set(), peak={};
+  r.onstart=()=>{ if(endedAt){ gapMs=Math.max(gapMs,performance.now()-endedAt); endedAt=0; } };
+  r.onresult=e=>{
+    if(rec!==r) return;
+    let interim="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const res=e.results[i], t=((res[0]&&res[0].transcript)||"").trim(); if(!t) continue;
+      if(res.isFinal){ if(done.has(i)) continue; done.add(i); lostFillers+=Math.max(0,(peak[i]||0)-soundCount(t)); delete peak[i]; append(t); }
+      else { peak[i]=Math.max(peak[i]||0,soundCount(t)); interim+=t+" "; }
+    }
+    live=interim.trim(); paint();
+  };
+  r.onerror=e=>{
+    if(rec!==r) return;
+    if(e.error==="not-allowed"||e.error==="service-not-allowed"){ abortRound("Microphone or speech access is blocked. Allow the microphone for this site in your browser settings, then try again."); return; }
+    if(e.error==="audio-capture"){ abortRound("No microphone was found. Plug one in or check your system sound settings, then try again."); return; }
+    if(e.error!=="no-speech"&&e.error!=="aborted") errs++;
+  };
+  r.onend=()=>{
+    if(rec!==r) return;
+    if(live){ append(live); live=""; paint(); }
+    if(Y.running){
+      endedAt=performance.now();
+      if(++restarts>60){ errs++; return; }
+      setTimeout(()=>{ if(Y.running&&rec===r) session(); },250);
+    } else rec=null;
+  };
+  try{ r.start(); }catch{ return false; }
+  rec=r; return true;
+}
+function stopRec(abort){ const r=rec; if(!r) return; try{ abort?r.abort():r.stop(); }catch{} if(abort) rec=null; }
+
+/* ================= round flow ================= */
+function startRound(){
+  if(!Y.q) return;
+  clearInterval(timer); stopRec(true);
+  hide("yResults"); show("yStage"); notice(""); $("yTranscript").textContent=""; $("yStop").hidden=false;
+  $("yStage").scrollIntoView({behavior:reduceMotion()?"auto":"smooth",block:"start"});
+  if(Y.prep>0){
+    Y.phase="prep";
+    $("yStageTitle").textContent=Y.q.t; $("yStageSub").textContent="Think time. Plan your first sentence; the rest will follow.";
+    $("yTranscript").dataset.empty=""; $("yStop").textContent="I’m ready, start";
+    let left=Y.prep; setClock(left,Y.prep,"prep");
+    timer=setInterval(()=>{ left-=.25; setClock(left,Y.prep,"prep"); if(left<=0){ clearInterval(timer); go(); } },250);
+    $("yStop").onclick=()=>{ clearInterval(timer); go(); };
+  } else go();
+}
+function go(){
+  heard=""; live=""; lostFillers=0; errs=0; gapMs=0; endedAt=0; restarts=0;
+  $("yStageTitle").textContent=Y.q.t; $("yStageSub").textContent="You’re on. Keep talking until the chime; messy is fine.";
+  $("yStop").textContent="Finish now"; $("yStop").onclick=()=>finish(false);
+  let capturing=false;
+  if(SR && !envCheck().startsWith("You’re inside")){ capturing=true; Y.running=true; if(!session()){ capturing=false; } }
+  $("yTranscript").dataset.empty = capturing ? "Listening…" : "Speech recognition isn’t available here, so this is a timer-only rep.";
+  Y.running=true; Y.phase="speak"; Y.started=performance.now(); Y.capturing=capturing;
+  let left=Y.secs; setClock(left,Y.secs);
+  timer=setInterval(()=>{ left-=.25; setClock(left,Y.secs,left<=10?"warn":""); if(left<=0){ chime(); finish(true); } },250);
+}
+function abortRound(msg){
+  Y.running=false; Y.phase="idle"; clearInterval(timer); stopRec(true);
+  notice(msg); $("yStop").hidden=true; setClock(0,1,"prep");
+}
+async function finish(full){
+  if(Y.phase!=="speak") return;
+  Y.phase="done"; Y.running=false; clearInterval(timer);
+  const secs=Math.min(Y.secs,(performance.now()-Y.started)/1000);
+  stopRec(false);
+  await new Promise(r=>setTimeout(r,700)); // let the engine deliver its last final result
+  if(live){ append(live); live=""; }
+  stopRec(true);
+  const m=score(heard,secs,full,lostFillers,{errs,gapMs});
+  m.capturing=Y.capturing; Y.last=m;
+  if(m.words>0) logRep();
+  render(m);
+}
+
+/* ================= scoring ================= */
+const FILLERS = [
+  ["um",/^u+m+$/],["uh",/^u+h+$/],["er",/^e+r+m*$/],["ah",/^a+h+$/],["hmm",/^h+m+$/],
+  ["you know","you know"],["i mean","i mean"],["kind of","kind of"],["sort of","sort of"],["you see","you see"],["i guess","i guess"],
+  ["basically","basically"],["actually","actually"],["literally","literally"],["honestly","honestly"],["anyway","anyway"],["like","like"]
+];
+// "like" is only a filler when it isn't doing grammatical work ("I'd like", "looks like", "like to").
+const LIKE_OK = new Set(["i","you","we","they","he","she","would","i'd","you'd","we'd","they'd","don't","didn't","doesn't","really","also","to","feel","feels","felt","look","looks","looked","sound","sounds","sounded","seem","seems","seemed","just","is","was","are","were","be","something","anything","nothing","much","more","most","what","not","people","things"]);
+function collapse(ws){
+  // drop immediate repeats of a 3+ word run (an engine glitch, not a speaker habit)
+  const out=[]; let i=0;
+  while(i<ws.length){
+    let skipped=false;
+    for(let n=Math.min(12,Math.floor((ws.length-i)/2));n>=3;n--){
+      const a=ws.slice(i,i+n).join(" ");
+      if(a===ws.slice(i+n,i+2*n).join(" ")){ out.push(...ws.slice(i,i+n)); i+=2*n; while(ws.slice(i,i+n).join(" ")===a) i+=n; skipped=true; break; }
+    }
+    if(!skipped){ out.push(ws[i]); i++; }
+  }
+  return out;
+}
+function countFillers(ws,lost){
+  const tally={};
+  const bump=(k,n=1)=>{ tally[k]=(tally[k]||0)+n; };
+  for(let i=0;i<ws.length;i++){
+    for(const [label,pat] of FILLERS){
+      if(pat instanceof RegExp){ if(pat.test(ws[i])){ bump(label); break; } continue; }
+      const parts=pat.split(" ");
+      if(parts.every((p,j)=>ws[i+j]===p)){
+        if(label==="like"){ const prev=ws[i-1]||"", next=ws[i+1]||""; if(LIKE_OK.has(prev)||next==="to"||next==="it"||next==="this"||next==="that") break; }
+        bump(label); i+=parts.length-1; break;
+      }
+    }
+  }
+  if(lost) bump("um/uh (caught live)",lost);
+  return tally;
+}
+const SIG = {
+  example:["for example","for instance","like when","one time","i remember","the other day","last week","last month","last year","when i was","there was this","imagine"],
+  link:["because","that's why","which means","so that","but","however","on the other hand","first","firstly","second","secondly","then","finally","also"],
+  close:["so that's","that's why","in short","to sum up","at the end of the day","bottom line","so yeah","and that's","which is why","overall","finally"],
+  hedge:["i think","i feel like","maybe","probably","i guess","i don't know","not sure","sort of","kind of"]
+};
+const STOP = new Set("a an the and or but so to of in on at for with from by is are was were be been being it its it's this that these those i me my we our you your he she they them their his her i'm i've i'd you're we're they're there here what which who when where why how not no yes do does did don't didn't have has had just very really like can could would should will about as if then than also one all some more most any up out into over get got go going gonna want know think yeah um uh".split(" "));
+const has = (text,list) => list.reduce((n,p)=>n+((text.match(new RegExp("(?:^| )"+p.replace(/'/g,"'?")+"(?= |$)","g"))||[]).length),0);
+
+function score(text,secs,full,lost,cap){
+  let ws=text.toLowerCase().split(/\s+/).map(norm).filter(Boolean);
+  ws=collapse(ws);
+  if(secs>=1 && ws.length>secs*4) ws=ws.slice(0,Math.floor(secs*4)); // nobody speaks 240 wpm; the rest is echo
+  const words=ws.length, dur=Math.round(secs);
+  const wpm = words&&secs>=1 ? Math.min(600,Math.round(words/(secs/60))) : 0;
+  const tally=countFillers(ws,lost), fillers=Object.values(tally).reduce((a,b)=>a+b,0);
+  const top=Object.entries(tally).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const tooShort = words>0 && (words<20 || secs<20);
+  const incomplete = secs>=20 && words>0 && wpm<40;
+  const unstable = cap.errs>0 || cap.gapMs>4000 || incomplete;
+  if(!words) return {words:0,dur,wpm:0,fillers:0,top:[],score:0,tooShort:false,incomplete:false,unstable,text:""};
+  // 55 pts pace (peak at 145 wpm, zero at ±100), 25 pts fillers (zero at 16 per 100 words), 20 pts staying power
+  const rate=fillers/words*100;
+  const pace=Math.max(0,55-Math.abs(wpm-145)*0.55);
+  const clean=Math.max(0,25-rate*25/16);
+  const stay = full ? 20 : (words>=8&&secs>=8 ? 15+Math.min(5,secs/Y.secs*5) : Math.min(15,secs/8*15));
+  const total=Math.max(0,Math.min(100,Math.round(pace+clean+stay)));
+  return {words,dur,wpm,fillers,rate,top,score:total,tooShort,incomplete,unstable,text:ws.join(" "),ws,full};
+}
+function band(s){
+  if(s>=85) return ["Smooth operator","That was clean. Do it once more to prove it wasn’t luck."];
+  if(s>=70) return ["Solid rep","Good flow. One more round sands off the rough edges."];
+  if(s>=50) return ["Still in your head","You’re planning more than you’re talking. Trust the first thought and keep moving."];
+  return ["Warm-up round","Everyone starts here. The only direction from this rep is up, so go again."];
+}
+function paceWord(w){ return w<110?"slow and steady":w<135?"relaxed and conversational":w<165?"the sweet spot":w<190?"high energy":"racing"; }
+function paceLine(w){
+  if(w<100) return "🐢 Slow. Calm is good, but listeners start to drift below about 110 words a minute.";
+  if(w<120) return "🚶 Relaxed. Lift the energy slightly and you’re in the zone.";
+  if(w<=150) return "🎯 Right in the zone, between 120 and 150 words a minute. Easy to follow, never dull.";
+  if(w<=170) return "🏃 Brisk. Lively, but let your key lines breathe.";
+  return "🚀 Very fast. Your listener is catching about half of it. Slow down and pause between ideas.";
+}
+const TIPS = {
+  none:["The speech engine didn’t catch you this time. Try Chrome on a laptop or Android, close other apps using the mic, and speak a little closer to it."],
+  fast:["Say your opening sentence at half speed on purpose. Then keep that tempo for the next line too.","Breathe at the end of every sentence. A real breath, not a gasp.","Start slower than feels natural; nerves add speed without asking."],
+  fillers:["When you feel a filler coming, shut your mouth and pause instead. Silence sounds confident; ‘um’ doesn’t.","Decide your first sentence during think time. Most fillers cluster in the first few seconds.","Swap every ‘um’ for a breath. Same thinking time, far better sound."],
+  brisk:["Add one deliberate two-second pause right after your opening line.","Slow down on your final sentence; it’s the one people remember.","Pick three words that matter and slow down only on those."],
+  slow:["Say the good-enough word now instead of hunting for the perfect one.","Start talking within three seconds of seeing the question. Commit to your first instinct.","Fill the whole time: when you think you’re done, add one more example."],
+  near:["You’re almost clean. Pick your single most-used filler and hunt only that one next round.","Notice the exact moment you reach for a filler, and pause there instead.","Find your crutch word in the list above and make it this round’s target."],
+  polish:["Open with a hook: make your first sentence something people would want to hear the end of.","Clean delivery. Next time, add one specific example or tiny story to make it stick.","End with a deliberate closing line instead of trailing off."]
+};
+function tipFor(m){
+  const set = !m.words ? TIPS.none : m.wpm>180 ? TIPS.fast : m.fillers>=8 ? TIPS.fillers : m.wpm>=160 ? TIPS.brisk : m.wpm<110 ? TIPS.slow : m.fillers>=4 ? TIPS.near : TIPS.polish;
+  return set[Math.floor(Math.random()*set.length)];
+}
+function signals(m){
+  const out=[], t=m.text, ws=m.ws||[];
+  const content=ws.filter(w=>!STOP.has(w)&&w.length>2);
+  if(content.length>=12){
+    const uniq=new Set(content).size/content.length;
+    out.push(uniq>=0.6?["good",`Varied vocabulary: ${Math.round(uniq*100)}% of your content words were different.`]:["warn",`You recycled words a lot (${Math.round(uniq*100)}% unique). Reach for a fresh word now and then.`]);
+    const freq={}; content.forEach(w=>freq[w]=(freq[w]||0)+1);
+    const [w,n]=Object.entries(freq).sort((a,b)=>b[1]-a[1])[0]||[];
+    if(n>=4 && !Y.q.t.toLowerCase().includes(w)) out.push(["warn",`You said “${w}” ${n} times. Find another way to say it, or cut it.`]);
+  }
+  const ex=has(t,SIG.example);
+  out.push(ex?["good","You grounded it with an example or a moment from real life."]:["warn","No example or story spotted. One specific moment makes any answer stick."]);
+  const link=has(t,SIG.link);
+  out.push(link>=3?["good","You linked your ideas (because, but, then, finally…), so it was easy to follow."]:["warn","Few linking words. Try “because”, “but” and “that’s why” to connect your points."]);
+  const hedge=has(t,SIG.hedge);
+  if(hedge>=3) out.push(["warn",`${hedge} hedges like “I think”, “maybe” or “I guess”. Say it like you mean it.`]);
+  if(m.words>=40){
+    const tail=ws.slice(-14).join(" ");
+    out.push(has(tail,SIG.close)?["good","You landed a closing line instead of just stopping."]:["warn","You stopped rather than finished. End with one line that sums up your point."]);
+  }
+  return out;
+}
+
+/* ================= results ================= */
+const metric=(v,l,s)=>`<div class="metric"><div class="v">${v}</div><div class="l">${l}</div>${s?`<div class="s">${s}</div>`:""}</div>`;
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function render(m){
+  hide("yStage"); show("yResults"); $("yShareMsg").textContent="";
+  $("yResults").scrollIntoView({behavior:reduceMotion()?"auto":"smooth",block:"start"});
+  const scored = m.words>0 && !m.tooShort && !m.incomplete;
+  $("yWarn").textContent = !m.capturing ? "Speech recognition wasn’t available, so this rep was timer-only. It still counts as practice."
+    : !m.words ? "Nothing was captured. Check that the right microphone is selected and the site is allowed to use it, then try again."
+    : m.incomplete ? "You talked for a while, but the speech engine only passed on part of it, so there’s nothing fair to score. Check your microphone (a laptop’s built-in or a wired mic works best) and go again."
+    : m.tooShort ? "Too short to score fairly. Aim for at least 20 seconds and we can read your pace properly."
+    : m.unstable ? "Heads up: the speech service dropped out during this take, so it missed some words. Your real score is probably higher." : "";
+  $("yVerdict").hidden=!scored; $("yPace").parentElement.hidden=!scored; $("ySignalsWrap").hidden=!scored;
+  $("yCardBtn").hidden=!scored;
+  if(scored){
+    const [b,note]=band(m.score);
+    animateScore(m.score); $("yBand").textContent=b; $("yBandNote").textContent=note;
+    $("yPaceHead").textContent=`Pace: ${m.wpm} words a minute`; $("yPace").textContent=paceLine(m.wpm);
+    const ul=$("ySignals"); ul.innerHTML="";
+    signals(m).forEach(([k,txt])=>{ const li=document.createElement("li"); const ic=document.createElement("span"); ic.className="ic "+k; ic.textContent=k==="good"?"✓":"△"; const s=document.createElement("span"); s.textContent=txt; li.append(ic,s); ul.appendChild(li); });
+  }
+  $("yMetrics").innerHTML = m.words ? [
+    metric(m.words,"Words spoken"),
+    metric(m.dur+" s","Time talking", m.full?"full time":""),
+    scored?metric(m.wpm,"Words per minute",paceWord(m.wpm)):"",
+    metric(m.fillers,"Filler words", m.top.length?m.top.map(([k,n])=>`${esc(k)} × ${n}`).join(" · "):"none caught")
+  ].join("") : "";
+  $("yTip").textContent=tipFor(m);
+  $("ySaidText").textContent=m.text||""; $("ySaid").hidden=!m.text;
+  renderStreak();
+}
+function animateScore(target){
+  const el=$("yScore"), small='<small>/100</small>';
+  if(reduceMotion()){ el.innerHTML=target+small; return; }
+  const t0=performance.now();
+  const step=now=>{ const p=Math.min(1,(now-t0)/1100), v=Math.round(target*(1-Math.pow(1-p,3))); el.innerHTML=v+small; if(p<1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+
+/* ================= streak (this browser only) ================= */
+const today = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+function readDays(){ try{ const v=JSON.parse(localStorage.getItem("yap.days")||"[]"); return Array.isArray(v)?v:[]; }catch{ return []; } }
+function logRep(){ try{ const d=readDays(), t=today(); if(!d.includes(t)){ d.push(t); localStorage.setItem("yap.days",JSON.stringify(d.slice(-400))); } }catch{} }
+function streak(){
+  const set=new Set(readDays()); let n=0; const d=new Date();
+  if(!set.has(today())) d.setDate(d.getDate()-1); // yesterday still keeps the streak alive
+  for(;;){ const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; if(!set.has(k)) break; n++; d.setDate(d.getDate()-1); }
+  return n;
+}
+function renderStreak(){
+  const n=streak(), done=readDays().includes(today());
+  $("yStreak").textContent = n ? `🔥 ${n}-day streak${done?". Today’s rep is done.":". Do one rep today to keep it."}` : "One rep a day builds the habit. Your streak starts with today’s.";
+}
+
+/* ================= sharing ================= */
+const challengeUrl = () => { const u=new URL(location.href); u.search=""; u.hash=""; u.searchParams.set("yap",Y.q.id); return u.toString(); };
+async function share(text,url){
+  if(navigator.share){ try{ await navigator.share({title:"Yap",text,url}); return "Shared."; }catch(e){ if(e&&e.name==="AbortError") return ""; } }
+  try{ await navigator.clipboard.writeText(`${text} ${url}`); return "Link copied. Paste it to a friend."; }
+  catch{ return "Copy this link: "+url; }
+}
+async function challenge(msgEl){
+  if(!Y.q) return;
+  const m=Y.last && !$("yResults").hidden && Y.last.words ? Y.last : null;
+  const text = m && !m.tooShort && !m.incomplete ? `I scored ${m.score}/100 talking about “${Y.q.t}”. Beat me in a minute:` : `Can you talk for a minute on “${Y.q.t}”?`;
+  $(msgEl).textContent = await share(text,challengeUrl());
+}
+
+function wrap(ctx,text,maxW){
+  const words=text.split(" "), lines=[]; let line="";
+  for(const w of words){ const t=line?line+" "+w:w; if(ctx.measureText(t).width>maxW&&line){ lines.push(line); line=w; } else line=t; }
+  if(line) lines.push(line); return lines;
+}
+function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+async function scoreCard(){
+  const m=Y.last; if(!m) return;
+  try{ await document.fonts.ready; }catch{}
+  const W=1080,H=1350, c=document.createElement("canvas"); c.width=W; c.height=H; const x=c.getContext("2d");
+  const D="'Bricolage Grotesque', system-ui, sans-serif", B="'IBM Plex Sans', system-ui, sans-serif";
+  const g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,"#2F5D50"); g.addColorStop(1,"#1d3a32"); x.fillStyle=g; x.fillRect(0,0,W,H);
+  x.textAlign="center"; x.fillStyle="#F2F6F4";
+  x.font=`600 26px ${B}`; x.globalAlpha=.75; x.fillText("YAP · ONE-MINUTE SPEAKING REP",W/2,110); x.globalAlpha=1;
+  const c0=catOf(Y.q.cat); x.font=`500 30px ${B}`; x.globalAlpha=.85; x.fillText(`${c0.emoji} ${c0.label} · ${lvlOf(Y.q.lvl).label}`,W/2,170); x.globalAlpha=1;
+  x.font=`700 56px ${D}`; let y=270; const lines=wrap(x,`“${Y.q.t}”`,880).slice(0,4);
+  lines.forEach(l=>{ x.fillText(l,W/2,y); y+=70; });
+  const cy=y+190, R=150;
+  x.lineWidth=24; x.lineCap="round"; x.strokeStyle="rgba(242,246,244,.18)"; x.beginPath(); x.arc(W/2,cy,R,0,Math.PI*2); x.stroke();
+  x.strokeStyle="#D6A84B"; x.beginPath(); x.arc(W/2,cy,R,-Math.PI/2,-Math.PI/2+Math.max(.02,m.score/100)*Math.PI*2); x.stroke();
+  x.fillStyle="#F2F6F4"; x.font=`800 140px ${D}`; x.fillText(String(m.score),W/2,cy+48);
+  x.font=`600 24px ${B}`; x.globalAlpha=.75; x.fillText("DELIVERY SCORE / 100",W/2,cy+R+62); x.globalAlpha=1;
+  x.font=`700 40px ${D}`; x.fillStyle="#E3BB66"; x.fillText(band(m.score)[0],W/2,cy+R+120);
+  const stats=[[String(m.wpm),"words / min"],[String(m.fillers),"filler words"],[String(m.words),"words spoken"]], top=cy+R+170;
+  stats.forEach(([v,l],i)=>{ const bx=90+i*310; x.fillStyle="rgba(242,246,244,.1)"; rr(x,bx,top,280,170,28); x.fill();
+    x.fillStyle="#F2F6F4"; x.font=`800 64px ${D}`; x.fillText(v,bx+140,top+92); x.font=`500 24px ${B}`; x.globalAlpha=.8; x.fillText(l,bx+140,top+136); x.globalAlpha=1; });
+  x.font=`600 28px ${B}`; x.fillStyle="#F2F6F4"; x.fillText("your turn → "+location.host+location.pathname.replace(/\/$/,""),W/2,H-70);
+  const blob=await new Promise(r=>c.toBlob(r,"image/png")); if(!blob) return;
+  const file=new File([blob],"yap-score.png",{type:"image/png"});
+  try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:"My Yap score"}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
+  const url=URL.createObjectURL(blob), a=document.createElement("a"); a.href=url; a.download="yap-score.png"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
+  $("yShareMsg").textContent="Score card saved as yap-score.png.";
+}
+
+/* ================= tabs ================= */
+function setTab(name,save=true){
+  const yap=name==="yap";
+  if(yap===!$("yapApp").hidden) return;
+  document.dispatchEvent(new CustomEvent("app:leave"));
+  $("gdApp").hidden=yap; $("yapApp").hidden=!yap;
+  $("tabGd").setAttribute("aria-pressed",String(!yap)); $("tabYap").setAttribute("aria-pressed",String(yap));
+  $("brandSub").textContent = yap ? "one-minute speaking reps, scored in your browser" : "group discussion practice for MBA placements";
+  document.title = yap ? "Yap · GD Room" : "GD Room";
+  if(save){ try{ localStorage.setItem("app.tab",name); }catch{} }
+}
+document.addEventListener("app:leave",()=>{
+  if($("yapApp").hidden) return;
+  clearInterval(timer); Y.running=false; Y.phase="idle"; stopRec(true); hide("yStage");
+});
+
+/* ================= wire up ================= */
+fillCats(); segY($("yLevels"),YLEVELS,"lvl",lvlHint); segY($("ySecs"),SECS,"secs"); segY($("yPreps"),PREPS,"prep"); lvlHint(); renderStreak();
+const env=envCheck(); $("yEnv").textContent=env;
+$("yCat").onchange=()=>{ Y.cat=$("yCat").value; };
+$("ySurprise").onclick=surprise;
+$("yDraw").onclick=draw;
+$("yShuffle").onclick=()=>{ showQ(pick(Y.q.cat,Y.q.lvl)); };
+$("yStart").onclick=startRound;
+$("yAgain").onclick=startRound;
+$("yNext").onclick=()=>{ draw(); $("yapApp").scrollIntoView({behavior:"auto",block:"start"}); };
+$("yChallenge").onclick=()=>challenge("yHint");
+$("yChallenge2").onclick=()=>challenge("yShareMsg");
+$("yCardBtn").onclick=scoreCard;
+$("tabGd").onclick=()=>setTab("gd");
+$("tabYap").onclick=()=>setTab("yap");
+
+const linked=new URLSearchParams(location.search).get("yap");
+const fromLink=linked && YTOPICS.find(t=>t.id===linked);
+if(fromLink){
+  Y.cat=fromLink.cat; Y.lvl=fromLink.lvl; $("yCat").value=Y.cat; segY($("yLevels"),YLEVELS,"lvl",lvlHint); lvlHint();
+  (used[Y.cat+"|"+Y.lvl]=new Set()).add(fromLink.id);
+  showQ(fromLink,true); setTab("yap",false);
+} else {
+  let saved=null; try{ saved=localStorage.getItem("app.tab"); }catch{}
+  if(saved==="yap") setTab("yap",false);
+}
 })();
 </script>
 </body>

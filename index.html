@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>GD Room</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF2F0; --surface:#FFFFFF; --ink:#18262B; --muted:#55666B; --line:#D3DBD8;
+  --felt:#2F5D50; --felt-2:#264C42; --felt-ink:#F2F6F4; --brass:#B8892E; --brass-ink:#7E5A12; --brass-soft:#F4EAD2;
+  --alert:#A3324A; --ok:#2B7355; --score:#2F5D50;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101719; --surface:#172124; --ink:#E4EBE9; --muted:#9BABA7; --line:#2C3A3D;
+    --felt:#2E6A59; --felt-2:#245446; --felt-ink:#EEF5F2; --brass:#D6A84B; --brass-ink:#E3BB66; --brass-soft:#352C1B;
+    --alert:#E58A9C; --ok:#6CC59E; --score:#6CC59E; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101719; --surface:#172124; --ink:#E4EBE9; --muted:#9BABA7; --line:#2C3A3D;
+  --felt:#2E6A59; --felt-2:#245446; --felt-ink:#EEF5F2; --brass:#D6A84B; --brass-ink:#E3BB66; --brass-soft:#352C1B;
+  --alert:#E58A9C; --ok:#6CC59E; --score:#6CC59E; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%; scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0; background:var(--bg); color:var(--ink); font:400 16px/1.55 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3{font-family:"Bricolage Grotesque","IBM Plex Sans",system-ui,sans-serif; line-height:1.15; margin:0}
+button,input,select{font:inherit; color:inherit}
+button{cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--brass); outline-offset:2px}
+.wrap{max-width:1080px; margin:0 auto; padding:20px 20px 64px}
+header.top{display:flex; justify-content:space-between; align-items:baseline; gap:16px; flex-wrap:wrap; padding:6px 0 14px}
+.brand{font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:22px; letter-spacing:-.01em}
+.brand small{font-family:"IBM Plex Sans",sans-serif; font-weight:400; font-size:14px; color:var(--muted); margin-left:8px}
+@media (max-width:560px){.brand small{display:block; margin:2px 0 0}}
+
+/* settings */
+.settings{background:var(--surface); border:1px solid var(--line); border-radius:14px; margin-bottom:26px}
+.settings summary{cursor:pointer; padding:12px 16px; font-weight:600; list-style:none; display:flex; justify-content:space-between; gap:12px}
+.settings summary::-webkit-details-marker{display:none}
+.settings summary::after{content:"Show"; font-weight:500; color:var(--muted); font-size:14px}
+.settings[open] summary::after{content:"Hide"}
+.key-state{font-weight:500; font-size:14px; color:var(--muted); margin-left:8px}
+.key-state.on{color:var(--ok)}
+.set-body{padding:0 16px 16px; display:grid; gap:10px; max-width:640px}
+.set-body label{font-size:14px; font-weight:600; color:var(--muted)}
+.field{width:100%; border:1.5px solid var(--line); border-radius:10px; padding:10px 12px; background:var(--bg)}
+.model-row{display:flex; gap:8px; flex-wrap:wrap}
+.model-row select{flex:1; min-width:200px}
+.check{display:flex; gap:8px; align-items:center; font-weight:500 !important; color:var(--ink) !important}
+
+.room{display:grid; grid-template-columns:minmax(280px,420px) 1fr; gap:36px; align-items:start}
+@media (max-width:820px){.room{grid-template-columns:1fr; gap:24px}}
+
+/* table */
+.table-zone{position:relative; width:100%; max-width:420px; aspect-ratio:1; margin:0 auto}
+.table{position:absolute; inset:11%; border-radius:50%; background:radial-gradient(circle at 50% 42%, var(--felt) 0%, var(--felt-2) 100%);
+  box-shadow: inset 0 0 0 10px color-mix(in srgb, var(--felt-2) 70%, #000 30%), 0 18px 40px -22px rgba(0,0,0,.45);
+  display:grid; place-items:center; padding:16%; text-align:center; color:var(--felt-ink)}
+.table .topic{font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:clamp(16px,2.6vw,22px); line-height:1.2; text-wrap:balance}
+.table .meta{font-size:12.5px; opacity:.8; margin-top:10px}
+.seat{position:absolute; width:16%; aspect-ratio:1; transform:translate(-50%,-50%); border-radius:50%;
+  display:grid; place-items:center; font-size:12px; font-weight:600; background:var(--surface); color:var(--muted); border:2px solid var(--line); transition:background .25s, color .25s, border-color .25s}
+.seat.spoke{background:var(--felt); color:var(--felt-ink); border-color:var(--felt)}
+.seat.you{background:var(--brass-soft); color:var(--brass-ink); border-color:var(--brass)}
+.seat.you.live{background:var(--brass); color:#1b1405; animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--brass) 25%,transparent)}}
+@media (prefers-reduced-motion:reduce){.seat.you.live{animation:none}}
+
+.controls h2{font-size:15px; font-family:"IBM Plex Sans",sans-serif; font-weight:600; color:var(--muted); margin:0 0 8px}
+.group{margin-bottom:20px}
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.chip{border:1.5px solid var(--line); background:var(--surface); padding:7px 13px; border-radius:999px; font-size:14.5px}
+.chip[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+.seg{display:inline-flex; border:1.5px solid var(--line); border-radius:10px; overflow:hidden; background:var(--surface); flex-wrap:wrap}
+.seg button{border:0; background:transparent; padding:8px 14px; font-size:14.5px}
+.seg button+button{border-left:1.5px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--felt); color:var(--felt-ink)}
+.hint{font-size:13.5px; color:var(--muted); margin:6px 0 0; max-width:62ch}
+.actions{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+.btn{border:0; border-radius:10px; padding:12px 20px; font-weight:600; font-size:15.5px; background:var(--ink); color:var(--bg)}
+.btn.brass{background:var(--brass); color:#1b1405}
+.btn.ghost{background:transparent; border:1.5px solid var(--line); color:var(--ink)}
+.btn.small{padding:9px 14px; font-size:14.5px}
+.btn:disabled{opacity:.45; cursor:not-allowed}
+
+.talk{margin-top:18px; display:grid; gap:10px}
+.talk:empty{display:none}
+.point{display:grid; grid-template-columns:38px 1fr; gap:10px; align-items:start; font-size:14.5px}
+.point .who{width:34px; height:34px; border-radius:50%; background:var(--felt); color:var(--felt-ink); display:grid; place-items:center; font-size:12px; font-weight:600}
+.point p{margin:0; background:var(--surface); border:1px solid var(--line); border-radius:4px 14px 14px 14px; padding:9px 12px}
+
+/* stage */
+.stage{margin-top:28px; background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:22px}
+.stage[hidden],.results[hidden]{display:none}
+.stage-head{display:flex; align-items:center; gap:18px; flex-wrap:wrap}
+.clock{position:relative; width:84px; height:84px; flex:none}
+.clock svg{transform:rotate(-90deg)}
+.clock .num{position:absolute; inset:0; display:grid; place-items:center; font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:22px}
+.clock circle{fill:none; stroke-width:7}
+.clock .track{stroke:var(--line)}
+.clock .prog{stroke:var(--felt); stroke-linecap:round; transition:stroke-dashoffset .25s linear}
+.clock.warn .prog{stroke:var(--brass)}
+.clock.prep .prog{stroke:var(--muted)}
+.stage-title{font-weight:600}
+.stage-sub{color:var(--muted); font-size:14px}
+.transcript{margin-top:16px; min-height:96px; font-size:16.5px; line-height:1.6; white-space:pre-wrap}
+.transcript .interim{color:var(--muted)}
+.transcript:empty::before{content:attr(data-empty); color:var(--muted)}
+textarea{width:100%; min-height:150px; border:1.5px solid var(--line); border-radius:12px; padding:12px; background:var(--bg); color:var(--ink); font:inherit; resize:vertical}
+.notice{font-size:14px; background:var(--brass-soft); color:var(--ink); border-radius:10px; padding:10px 12px; margin-top:12px}
+.notice:empty{display:none}
+
+/* results */
+.results{margin-top:28px}
+.results h2{font-size:26px; margin-bottom:14px}
+audio{width:100%; max-width:520px; margin:0 0 14px}
+.metrics{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:1px; background:var(--surface); box-shadow:inset 0 0 0 1px var(--line); border-radius:14px; overflow:hidden}
+.metrics:empty{display:none}
+.metric{background:var(--surface); padding:14px 16px; outline:1px solid var(--line)}
+.metric .v{font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:28px; line-height:1.1}
+.metric .l{font-size:13.5px; color:var(--muted)}
+.metric .v.bad{color:var(--alert)} .metric .v.good{color:var(--ok)}
+.flags{margin:14px 0 0; padding-left:18px; font-size:15px}
+.flags:empty{display:none}
+.flags li{margin:4px 0}
+details.said{margin-top:14px; font-size:15px}
+details.said summary{cursor:pointer; color:var(--muted); font-weight:600}
+details.said p{white-space:pre-wrap; margin:8px 0 0}
+.panel{margin-top:22px; border-top:2px solid var(--ink); padding-top:18px}
+.panel-head{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap}
+.panel-head h3{font-size:20px}
+.verdict{display:grid; grid-template-columns:auto 1fr; gap:18px; align-items:center; margin:16px 0}
+.big{font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:56px; line-height:1; color:var(--score)}
+.big small{font-size:18px; color:var(--muted); font-weight:500}
+.rubric{display:grid; gap:10px; margin:6px 0 18px}
+.row{display:grid; grid-template-columns:190px 1fr; gap:14px; align-items:start; font-size:15px}
+@media (max-width:560px){.row{grid-template-columns:1fr; gap:4px}}
+.row .bar{height:8px; border-radius:4px; background:var(--line); margin-top:8px; overflow:hidden}
+.row .bar i{display:block; height:100%; background:var(--felt)}
+.row .note{color:var(--muted); font-size:14px; margin-top:4px}
+.callout{border-left:3px solid var(--brass); padding:4px 0 4px 14px; margin:14px 0}
+.callout b{display:block; font-size:14px; color:var(--muted); font-weight:600}
+.status{color:var(--muted); font-size:15px}
+footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">GD Room <small>group discussion practice for MBA placements</small></div>
+  </header>
+
+  <details class="settings" id="settings">
+    <summary><span>Gemini settings <span class="key-state" id="keyState"></span></span></summary>
+    <div class="set-body">
+      <label for="keyIn">API key</label>
+      <input class="field" id="keyIn" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key from Google AI Studio">
+      <label class="check"><input type="checkbox" id="remember"> Remember on this device</label>
+      <label for="modelSel">Model</label>
+      <div class="model-row">
+        <select class="field" id="modelSel"></select>
+        <button class="btn ghost small" id="loadModels" type="button">Refresh models</button>
+      </div>
+      <div class="actions"><button class="btn small" id="saveKey" type="button">Save and connect</button><button class="btn ghost small" id="clearKey" type="button">Forget key</button></div>
+      <p class="hint" id="setMsg">Your key goes only from this browser to Google’s Gemini API. Without “Remember”, it’s cleared when you close the tab.</p>
+    </div>
+  </details>
+
+  <section class="room">
+    <div>
+      <div class="table-zone" id="tableZone" aria-hidden="true">
+        <div class="table"><div><div class="topic" id="tableTopic">Draw a topic to take your seat</div><div class="meta" id="tableMeta">Six chairs. One moderator. A bell at the end.</div></div></div>
+      </div>
+      <div class="talk" id="talk" aria-live="polite"></div>
+    </div>
+
+    <div class="controls">
+      <div class="group"><h2 id="catLbl">Topic type</h2><div class="chips" id="cats" role="group" aria-labelledby="catLbl"></div></div>
+      <div class="group"><h2 id="lvlLbl">Panel difficulty</h2><div class="seg" id="levels" role="group" aria-labelledby="lvlLbl"></div></div>
+      <div class="group"><h2 id="modeLbl">Your role in the GD</h2><div class="seg" id="modes" role="group" aria-labelledby="modeLbl"></div><p class="hint" id="modeHint"></p></div>
+      <div class="group"><h2 id="prepLbl">Think time</h2><div class="seg" id="preps" role="group" aria-labelledby="prepLbl"></div></div>
+      <div class="actions">
+        <button class="btn" id="drawBtn" type="button">Draw a topic</button>
+        <button class="btn brass" id="startBtn" type="button" disabled>Start speaking</button>
+        <button class="btn ghost" id="typeBtn" type="button" disabled>Type instead</button>
+      </div>
+      <p class="hint" id="drawHint"></p>
+    </div>
+  </section>
+
+  <section class="stage" id="stage" hidden aria-live="polite">
+    <div class="stage-head">
+      <div class="clock" id="clock">
+        <svg width="84" height="84" viewBox="0 0 84 84"><circle class="track" cx="42" cy="42" r="36"/><circle class="prog" id="prog" cx="42" cy="42" r="36" stroke-dasharray="226.2" stroke-dashoffset="0"/></svg>
+        <div class="num" id="clockNum">0</div>
+      </div>
+      <div style="flex:1; min-width:180px"><div class="stage-title" id="stageTitle"></div><div class="stage-sub" id="stageSub"></div></div>
+      <button class="btn ghost" id="stopBtn" type="button">Finish now</button>
+    </div>
+    <div class="transcript" id="transcript" data-empty=""></div>
+    <div id="typeArea" hidden>
+      <textarea id="typed" placeholder="Write exactly what you would say in the room. Speak it aloud first if you can, then type it."></textarea>
+      <div class="actions" style="margin-top:10px"><button class="btn" id="evalTyped" type="button">Evaluate my answer</button></div>
+    </div>
+    <div class="notice" id="notice"></div>
+  </section>
+
+  <section class="results" id="results" hidden>
+    <h2>How that sounded</h2>
+    <audio id="player" controls hidden></audio>
+    <div class="metrics" id="metrics"></div>
+    <ul class="flags" id="flags"></ul>
+    <details class="said" id="said" hidden><summary>What you said</summary><p id="saidText"></p></details>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Panel scorecard</h3>
+        <button class="btn ghost small" id="panelBtn" type="button" hidden>Retry feedback</button>
+      </div>
+      <div id="panelOut"></div>
+    </div>
+    <div class="actions" style="margin-top:22px">
+      <button class="btn ghost" id="againBtn" type="button">Same topic again</button>
+      <button class="btn ghost" id="nextBtn" type="button">Next topic</button>
+    </div>
+  </section>
+
+  <footer>Nothing is saved: each round is gone when you leave or start the next one. With a Gemini key, your recording is sent to Google for transcription and feedback; on the API’s free tier Google may use that content to improve its products. Without a key, your browser’s own speech recognition is used and only delivery metrics are shown.</footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ================= topic bank ================= */
+const CATS = [
+  {id:"abstract",label:"Abstract"},{id:"biz",label:"Business & strategy"},{id:"econ",label:"Economy & policy"},
+  {id:"tech",label:"Tech & AI"},{id:"social",label:"Social & ethics"},{id:"case",label:"Case GD"}
+];
+const LEVELS = [{id:"e",label:"Warm-up"},{id:"m",label:"Standard"},{id:"h",label:"Final round"}];
+const MODES = [
+  {id:"initiate",label:"Initiate",secs:60,hint:"You open the discussion. Define the topic, take a position or a frame, and set the agenda in one minute."},
+  {id:"addvalue",label:"Enter mid-GD",secs:45,hint:"Three people have already spoken. Get in, build on or counter a specific point, and add something new in 45 seconds."},
+  {id:"summarize",label:"Summarize",secs:60,hint:"The discussion is over. Summarize the room’s arguments fairly, without adding your own opinion, in one minute."}
+];
+const PREPS = [{id:0,label:"None"},{id:30,label:"30 s"},{id:60,label:"60 s"}];
+const T = (cat,lvl,list) => list.map((t,i)=>({id:`${cat}-${lvl}-${i}`,cat,lvl,t}));
+const TOPICS = [
+  ...T("abstract","e",["Zero","Mirrors","Footprints","Blue is the new red"]),
+  ...T("abstract","m",["The map is not the territory","Silence is also an answer","Rust","Snakes and ladders"]),
+  ...T("abstract","h",["The last ten percent","A bridge too far","Black swans and grey rhinos","Every exit is an entry somewhere else"]),
+  ...T("biz","e",["Is quick commerce a fad or the future of Indian retail?","Should startups chase profitability over growth?","Can D2C brands survive without heavy marketing spend?"]),
+  ...T("biz","m",["Can India build a truly global consumer brand in the next decade?","Conglomerates or focused companies: which model wins in India?","Should Indian IT pivot from services to products?","Is the creator economy a real industry or a bubble?"]),
+  ...T("biz","h",["Dark stores are hurting kiranas. Should regulators step in?","Is “growth at all costs” dead for Indian startups?","Should India allow 100% FDI in multi-brand retail?"]),
+  ...T("econ","e",["Freebies versus welfare: where is the line?","Should India move to a four-day work week?","Is cash dead in India?"]),
+  ...T("econ","m",["Is India’s demographic dividend turning into a liability?","Manufacturing-led or services-led growth for India?","Is a single GST rate desirable?","Should India join large regional trade blocs?"]),
+  ...T("econ","h",["Can India reach $10 trillion without a manufacturing revolution?","Should the RBI prioritise growth or inflation control?","Is it time to tax agricultural income?","Are production-linked incentives the right industrial policy?"]),
+  ...T("tech","e",["Will AI take your first job?","Should colleges allow AI tools in assignments?","Work from home or return to office?"]),
+  ...T("tech","m",["Should India regulate AI now or let it grow first?","Is data the new oil or the new plutonium?","Should Big Tech pay news publishers?","Can India build its own foundation AI models?"]),
+  ...T("tech","h",["AI agents will replace middle management. Agree or disagree?","Who is liable when an AI makes a business decision that goes wrong?","India’s digital public infrastructure: export opportunity or overhyped?"]),
+  ...T("social","e",["Social media does more harm than good to young professionals","Should there be a minimum age for social media?","Is hustle culture toxic?"]),
+  ...T("social","m",["Should companies take political stands?","Is CSR in India genuine or compliance theatre?","Moonlighting: betrayal or a right?","Should private-sector hiring have diversity targets?"]),
+  ...T("social","h",["Should brands answer for labour practices deep in their supply chains?","Can a company afford to be ethical in a price-sensitive market?","Is meritocracy a myth?"]),
+  ...T("case","e",["A café’s footfall fell 30% after a rival opened next door. What should the owner do in the next month?","A college fest’s main sponsor pulled out two weeks before the event. What now?"]),
+  ...T("case","m",["An FMCG brand lost 4 share points to a D2C rival in 18 months. You are the leadership team. Plan the next 90 days.","An EV two-wheeler startup faces a battery-fire recall. Decide the response.","A regional airline’s on-time performance is the worst in the country. Fix it."]),
+  ...T("case","h",["Your edtech company must cut costs by 30% in six months without losing its brand. Where do you cut?","A tier-2 hospital chain wants to triple in size. Organic growth or acquisitions?","A family-run textile exporter is losing orders to Bangladesh and Vietnam. Rescue plan?"])
+];
+
+/* ================= state ================= */
+const S = {cat:"biz",lvl:"m",mode:"initiate",prep:30,topic:null,points:[],secs:0,wsPauses:0,typed:false,recording:false,
+  wsTranscript:"",audioBlob:null,wav:null,pause:null,run:null};
+const $ = id => document.getElementById(id);
+const hide = id => { $(id).hidden=true; }, show = id => { $(id).hidden=false; };
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const catLabel = id => (CATS.find(c=>c.id===id)||{}).label||"";
+const lvlLabel = id => (LEVELS.find(l=>l.id===id)||{}).label||"";
+const modeOf = id => MODES.find(m=>m.id===id);
+
+/* ================= Gemini config ================= */
+const API = "https://generativelanguage.googleapis.com/v1beta";
+const cfg = {key:"",model:"",remember:false};
+function loadCfg(){
+  try{
+    const k=localStorage.getItem("gdroom.key"); if(k){cfg.key=k; cfg.remember=true;}
+    else { const sk=sessionStorage.getItem("gdroom.key"); if(sk) cfg.key=sk; }
+    cfg.model=localStorage.getItem("gdroom.model")||sessionStorage.getItem("gdroom.model")||"";
+  }catch{}
+}
+function saveCfg(){
+  try{
+    localStorage.removeItem("gdroom.key"); sessionStorage.removeItem("gdroom.key");
+    (cfg.remember?localStorage:sessionStorage).setItem("gdroom.key",cfg.key);
+    (cfg.remember?localStorage:sessionStorage).setItem("gdroom.model",cfg.model);
+  }catch{}
+}
+function clearCfg(){
+  cfg.key=""; try{ localStorage.removeItem("gdroom.key"); sessionStorage.removeItem("gdroom.key"); }catch{}
+}
+const aiReady = () => !!(cfg.key && cfg.model);
+function renderKeyState(){
+  const el=$("keyState");
+  el.textContent = aiReady() ? `connected, ${cfg.model}` : "not connected";
+  el.className = "key-state"+(aiReady()?" on":"");
+}
+
+function geminiError(e){
+  const msg=(e&&e.message)||"";
+  if(e&&e.code==="aborted") return "Stopped.";
+  if(e&&e.code==="no_key") return "Add your Gemini API key in settings to get panel feedback.";
+  if(e&&(e.code===400) && /api key/i.test(msg)) return "That API key isn’t valid. Check it in Gemini settings.";
+  if(e&&e.code===403) return "This key isn’t allowed to call the Gemini API (check its API and website restrictions in Google Cloud).";
+  if(e&&e.code===404) return `The model “${cfg.model}” isn’t available to your key. Pick another model in settings.`;
+  if(e&&e.code===429) return "You’ve hit the Gemini rate limit or daily quota. Wait a minute, or switch to a lighter model in settings.";
+  if(e&&e.code==="bad_json") return "Gemini replied in an unexpected format. Retry, or try a different model.";
+  return "Gemini couldn’t respond"+(msg?`: ${msg}`:".")+" Retry in a moment.";
+}
+
+async function gemini(parts, signal){
+  if(!aiReady()) throw {code:"no_key"};
+  let res;
+  try{
+    res = await fetch(`${API}/models/${encodeURIComponent(cfg.model)}:generateContent`,{
+      method:"POST", signal,
+      headers:{"Content-Type":"application/json","x-goog-api-key":cfg.key},
+      body:JSON.stringify({contents:[{role:"user",parts}],generationConfig:{responseMimeType:"application/json",temperature:0.6}})
+    });
+  }catch(err){ if(err&&err.name==="AbortError") throw {code:"aborted"}; throw {code:"network",message:"network error"}; }
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw {code:res.status,message:(data.error&&data.error.message)||res.statusText};
+  const cand=(data.candidates||[])[0];
+  const text=((cand&&cand.content&&cand.content.parts)||[]).map(p=>p.text||"").join("");
+  if(!text) throw {code:"empty",message:(data.promptFeedback&&data.promptFeedback.blockReason)||(cand&&cand.finishReason)||"empty response"};
+  try{ return JSON.parse(text.replace(/^\s*```(?:json)?\s*/i,"").replace(/\s*```\s*$/,"")); }
+  catch{ throw {code:"bad_json"}; }
+}
+
+async function listModels(key){
+  const res = await fetch(`${API}/models?pageSize=1000`,{headers:{"x-goog-api-key":key}});
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw {code:res.status,message:(data.error&&data.error.message)||res.statusText};
+  const skip=/(image|tts|embedding|live|native-audio|robotics|computer-use|nano|aqa|learnlm|gemma)/i;
+  const ms=(data.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent") && /gemini/i.test(m.name) && !skip.test(m.name))
+    .map(m=>({id:m.name.replace(/^models\//,""),label:m.displayName||m.name}));
+  const ver = id => { const v=id.match(/gemini-(\d+(?:\.\d+)?)/); return v?parseFloat(v[1]):0; };
+  const rank = id => (/flash/.test(id)&&!/lite/.test(id)?3:/pro/.test(id)?2:/lite/.test(id)?1:0) + (/(exp|preview)/.test(id)?-0.5:0);
+  ms.sort((a,b)=> (ver(b.id)-ver(a.id)) || (rank(b.id)-rank(a.id)) || a.id.localeCompare(b.id));
+  return ms;
+}
+function fillModels(ms){
+  const sel=$("modelSel"); sel.innerHTML="";
+  if(cfg.model && !ms.some(m=>m.id===cfg.model)) ms=[{id:cfg.model,label:cfg.model+" (saved)"},...ms];
+  ms.forEach(m=>{ const o=document.createElement("option"); o.value=m.id; o.textContent=`${m.label} (${m.id})`; sel.appendChild(o); });
+  if(!cfg.model){ const pick = ms.find(m=>/flash/.test(m.id)&&!/lite/.test(m.id)&&!/(exp|preview)/.test(m.id)) || ms.find(m=>/flash/.test(m.id)&&!/lite/.test(m.id)) || ms.find(m=>/flash/.test(m.id)) || ms[0]; if(pick) cfg.model=pick.id; }
+  sel.value=cfg.model;
+}
+async function connect(){
+  const key=$("keyIn").value.trim();
+  if(!key){ $("setMsg").textContent="Paste a key first. Create one at aistudio.google.com under “Get API key”."; return; }
+  $("setMsg").textContent="Checking your key…"; $("saveKey").disabled=true;
+  try{
+    const ms=await listModels(key);
+    cfg.key=key; cfg.remember=$("remember").checked;
+    if(!ms.length) throw {message:"no text models are available to this key"};
+    fillModels(ms); cfg.model=$("modelSel").value; saveCfg(); renderKeyState();
+    $("setMsg").textContent=`Connected. Using ${cfg.model}. Flash models are fast and cheap; Pro models give deeper critique but hit free-tier limits sooner.`;
+    $("settings").open=false;
+    if(S.topic && S.mode!=="initiate" && !S.points.length) draw(true);
+  }catch(e){
+    $("setMsg").textContent = e.code===400||e.code===403 ? "Google rejected that key. Copy it again from AI Studio." : "Couldn’t connect: "+(e.message||"network error");
+  }finally{ $("saveKey").disabled=false; }
+}
+
+/* ================= controls ================= */
+function seg(el,items,key,onPick){
+  el.innerHTML="";
+  items.forEach(it=>{
+    const b=document.createElement("button"); b.type="button"; b.textContent=it.label; b.setAttribute("aria-pressed",String(S[key]===it.id));
+    b.addEventListener("click",()=>{ S[key]=it.id; [...el.children].forEach(c=>c.setAttribute("aria-pressed","false")); b.setAttribute("aria-pressed","true"); onPick&&onPick(); });
+    el.appendChild(b);
+  });
+}
+function chips(){
+  const el=$("cats"); el.innerHTML="";
+  [...CATS,{id:"any",label:"Surprise me"}].forEach(c=>{
+    const b=document.createElement("button"); b.type="button"; b.className="chip"; b.textContent=c.label; b.setAttribute("aria-pressed",String(S.cat===c.id));
+    b.addEventListener("click",()=>{ S.cat=c.id; [...el.children].forEach(x=>x.setAttribute("aria-pressed","false")); b.setAttribute("aria-pressed","true"); });
+    el.appendChild(b);
+  });
+}
+const modeHint = () => { $("modeHint").textContent = modeOf(S.mode).hint; };
+
+/* ================= table ================= */
+const SEATS=["You","P1","P2","P3","P4","P5"];
+const spokenCount = () => S.mode==="initiate"?0:Math.min(S.mode==="addvalue"?3:S.points.length,5);
+function drawSeats(spoken=0,live=false){
+  const z=$("tableZone"); z.querySelectorAll(".seat").forEach(s=>s.remove());
+  SEATS.forEach((name,i)=>{
+    const a=(90+i*60)*Math.PI/180, r=44, s=document.createElement("div");
+    s.className="seat"; s.textContent=name; s.style.left=(50+r*Math.cos(a))+"%"; s.style.top=(50+r*Math.sin(a))+"%";
+    if(i===0){ s.classList.add("you"); if(live) s.classList.add("live"); } else if(i<=spoken) s.classList.add("spoke");
+    z.appendChild(s);
+  });
+}
+function renderTalk(){
+  const el=$("talk"); el.innerHTML="";
+  const n = S.mode==="addvalue"?3:S.mode==="summarize"?S.points.length:0;
+  S.points.slice(0,n).forEach((p,i)=>{
+    const row=document.createElement("div"); row.className="point";
+    const who=document.createElement("div"); who.className="who"; who.textContent="P"+((i%5)+1);
+    const txt=document.createElement("p"); txt.textContent=p.text; row.append(who,txt); el.appendChild(row);
+  });
+  drawSeats(spokenCount());
+}
+
+async function fetchPoints(){
+  S.points=[];
+  if(S.mode==="initiate"){ renderTalk(); return true; }
+  if(!aiReady()){ $("drawHint").textContent="“Enter mid-GD” and “Summarize” need your Gemini key to seat the other participants. Add it in Gemini settings above, or use “Initiate”."; renderTalk(); return false; }
+  $("talk").innerHTML='<p class="status">Seating the other participants…</p>';
+  const prompt=`You are simulating an Indian MBA placement group discussion (GD).
+Topic: "${S.topic.t}"
+Difficulty: ${lvlLabel(S.lvl)}.
+Write 6 contributions by different participants, in the order the discussion would unfold, as they would actually speak in the room: 25 to 40 words each, plain spoken English, no names, no numbering.
+Mix: two in favour or one framing, two against or a different frame, one that brings a concrete example or an approximate figure (say "around" for figures), and one weak generic point a panel would ignore.
+Return JSON only: {"points":[{"stance":"for|against|data|weak","text":"..."}]}`;
+  try{
+    const v=await gemini([{text:prompt}]);
+    const pts=(v&&Array.isArray(v.points))?v.points.filter(p=>p&&typeof p.text==="string").slice(0,6):[];
+    if(pts.length<3) throw {code:"bad_json"};
+    S.points=pts; renderTalk(); return true;
+  }catch(e){ $("talk").innerHTML=""; $("drawHint").textContent=geminiError(e); drawSeats(0); return false; }
+}
+
+async function draw(sameTopic=false){
+  if(!sameTopic || !S.topic){
+    let pool=TOPICS.filter(t=>(S.cat==="any"||t.cat===S.cat)&&t.lvl===S.lvl);
+    if(S.topic&&pool.length>1) pool=pool.filter(t=>t.id!==S.topic.id);
+    S.topic=pool[Math.floor(Math.random()*pool.length)];
+    S.points=[];
+  }
+  const m=modeOf(S.mode);
+  $("tableTopic").textContent=S.topic.t;
+  $("tableMeta").textContent=`${catLabel(S.topic.cat)}, ${lvlLabel(S.topic.lvl).toLowerCase()}. ${m.label}, ${m.secs} seconds`;
+  $("drawHint").textContent=""; $("startBtn").disabled=true; $("typeBtn").disabled=true;
+  hide("results"); hide("stage");
+  const ok = (S.mode==="initiate") ? (renderTalk(),true) : (S.points.length ? (renderTalk(),true) : await fetchPoints());
+  $("startBtn").disabled=!ok; $("typeBtn").disabled=!ok;
+}
+
+/* ================= clock & bell ================= */
+const CIRC=226.2; let timer=null;
+function setClock(left,total,cls){
+  $("clockNum").textContent=Math.max(0,Math.ceil(left));
+  $("prog").style.strokeDashoffset=String(CIRC*(1-Math.max(0,left)/total));
+  $("clock").className="clock"+(cls?" "+cls:"");
+}
+function bell(){
+  try{
+    const ac=new (window.AudioContext||window.webkitAudioContext)();
+    [880,1320].forEach((f,i)=>{ const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=f;
+      g.gain.setValueAtTime(.0001,ac.currentTime); g.gain.exponentialRampToValueAtTime(.25/(i+1),ac.currentTime+.02); g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+1.4);
+      o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime+1.5); });
+    setTimeout(()=>ac.close&&ac.close(),1800);
+  }catch{}
+}
+const setNotice = t => { $("notice").textContent=t||""; };
+
+/* ================= recording ================= */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec=null, finalText="", lastHeard=0, speakStart=0, recorder=null, stream=null, chunks=[];
+
+function startRound(){
+  S.typed=false; S.wsTranscript=""; S.wsPauses=0; S.audioBlob=null; S.wav=null; S.pause=null;
+  hide("results"); show("stage"); $("typeArea").hidden=true; $("transcript").hidden=false; $("transcript").textContent=""; setNotice("");
+  $("stopBtn").hidden=false;
+  const m=modeOf(S.mode);
+  if(S.prep>0){
+    $("stageTitle").textContent="Think time"; $("stageSub").textContent="Frame it: a definition, two arguments, one example. You’ll start automatically.";
+    $("transcript").dataset.empty=""; $("stopBtn").textContent="Skip to speaking";
+    let left=S.prep; setClock(left,S.prep,"prep"); clearInterval(timer);
+    timer=setInterval(()=>{ left-=.25; setClock(left,S.prep,"prep"); if(left<=0){ clearInterval(timer); speak(m); } },250);
+    $("stopBtn").onclick=()=>{ clearInterval(timer); speak(m); };
+  } else speak(m);
+  $("stage").scrollIntoView({behavior:reduceMotion()?"auto":"smooth",block:"start"});
+}
+
+function startWebSpeech(fatal){
+  try{
+    rec=new SR(); rec.lang="en-IN"; rec.continuous=true; rec.interimResults=true;
+    rec.onresult=ev=>{
+      const now=performance.now(); if(now-lastHeard>2500) S.wsPauses++; lastHeard=now;
+      let interim="";
+      for(let i=ev.resultIndex;i<ev.results.length;i++){ const r=ev.results[i]; if(r.isFinal) finalText+=r[0].transcript.trim()+" "; else interim+=r[0].transcript; }
+      const el=$("transcript"); el.textContent=finalText;
+      if(interim){ const s=document.createElement("span"); s.className="interim"; s.textContent=interim; el.appendChild(s); }
+    };
+    rec.onerror=ev=>{
+      if(!fatal){ if(["not-allowed","service-not-allowed","network"].includes(ev.error)) $("transcript").dataset.empty="Recording. Your transcript appears after the bell."; return; }
+      if(["not-allowed","service-not-allowed","audio-capture"].includes(ev.error)){
+        S.recording=false; clearInterval(timer);
+        setNotice(ev.error==="audio-capture"?"No microphone was found. Type your answer instead.":"Microphone access is blocked. Allow the mic for this site, or type your answer instead.");
+        switchToTyping();
+      }
+    };
+    rec.onend=()=>{ if(S.recording){ try{ rec.start(); }catch{} } };
+    rec.start();
+    return true;
+  }catch{ return false; }
+}
+
+async function speak(m){
+  $("stageTitle").textContent = m.id==="initiate"?"You have the floor. Open the discussion.":m.id==="addvalue"?"Get in now. Build on or counter what you heard.":"Summarize the discussion for the panel.";
+  $("stageSub").textContent="Speak clearly. The bell rings at the end.";
+  $("stopBtn").textContent="Finish now"; $("stopBtn").onclick=()=>finish();
+  drawSeats(spokenCount(),true);
+  finalText=""; chunks=[]; recorder=null; rec=null;
+
+  if(aiReady()){
+    if(!navigator.mediaDevices||!window.MediaRecorder){ setNotice("This browser can’t record audio. Type your answer instead."); switchToTyping(); return; }
+    try{ stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}); }
+    catch{ setNotice("Microphone access was blocked. Allow the mic for this site, or type your answer instead."); switchToTyping(); return; }
+    const mime=["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg;codecs=opus"].find(t=>MediaRecorder.isTypeSupported(t));
+    try{ recorder=new MediaRecorder(stream, mime?{mimeType:mime}:undefined); }catch{ recorder=new MediaRecorder(stream); }
+    recorder.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    recorder.start(1000);
+    if(SR && !isMobile){ $("transcript").dataset.empty="Listening…"; startWebSpeech(false); }
+    else $("transcript").dataset.empty="Recording. Your transcript appears after the bell.";
+  } else {
+    if(!SR){ setNotice("This browser has no built-in speech recognition (Chrome, Edge and Safari do). Add a Gemini key to record instead, or type your answer."); switchToTyping(); return; }
+    $("transcript").dataset.empty="Listening…";
+    if(!startWebSpeech(true)){ setNotice("Speech recognition couldn’t start. Type your answer instead."); switchToTyping(); return; }
+  }
+  S.recording=true; speakStart=performance.now(); lastHeard=speakStart;
+  let left=m.secs; setClock(left,m.secs); clearInterval(timer);
+  timer=setInterval(()=>{ left-=.25; setClock(left,m.secs,left<=10?"warn":""); if(left<=0){ bell(); finish(); } },250);
+}
+
+function stopStream(){ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; } }
+
+function switchToTyping(){
+  S.typed=true; S.recording=false; clearInterval(timer);
+  try{ rec&&rec.stop(); }catch{} try{ recorder&&recorder.state!=="inactive"&&recorder.stop(); }catch{} stopStream();
+  show("stage"); $("transcript").hidden=true; $("typeArea").hidden=false; $("stopBtn").hidden=true;
+  $("stageTitle").textContent="Type what you would say"; $("stageSub").textContent="Pace and pauses need audio, so only content is scored.";
+  setClock(0,1,"prep"); $("clockNum").textContent="✎"; drawSeats(spokenCount(),true); $("typed").focus();
+}
+
+async function finish(){
+  if(!S.recording) return;
+  S.recording=false; clearInterval(timer);
+  S.secs=(performance.now()-speakStart)/1000;
+  try{ rec&&rec.stop(); }catch{}
+  let blob=null;
+  if(recorder){
+    blob=await new Promise(res=>{
+      recorder.onstop=()=>res(new Blob(chunks,{type:recorder.mimeType||"audio/webm"}));
+      try{ recorder.stop(); }catch{ res(null); }
+    });
+    stopStream();
+  }
+  await new Promise(r=>setTimeout(r,500));
+  S.wsTranscript=($("transcript").textContent||"").trim();
+  S.audioBlob=blob && blob.size ? blob : null;
+  evaluate();
+}
+
+/* ================= audio processing ================= */
+async function decodeTo16k(blob){
+  const AC=window.AudioContext||window.webkitAudioContext; const ac=new AC();
+  const audio=await ac.decodeAudioData(await blob.arrayBuffer()); try{ ac.close(); }catch{}
+  const off=new OfflineAudioContext(1,Math.max(1,Math.ceil(audio.duration*16000)),16000);
+  const src=off.createBufferSource(); src.buffer=audio; src.connect(off.destination); src.start();
+  return (await off.startRendering()).getChannelData(0);
+}
+function encodeWav(x,rate){
+  const buf=new ArrayBuffer(44+x.length*2), v=new DataView(buf);
+  const w=(o,s)=>{ for(let i=0;i<s.length;i++) v.setUint8(o+i,s.charCodeAt(i)); };
+  w(0,"RIFF"); v.setUint32(4,36+x.length*2,true); w(8,"WAVE"); w(12,"fmt "); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,rate,true); v.setUint32(28,rate*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,"data"); v.setUint32(40,x.length*2,true);
+  for(let i=0;i<x.length;i++){ const s=Math.max(-1,Math.min(1,x[i])); v.setInt16(44+i*2,s<0?s*0x8000:s*0x7FFF,true); }
+  return buf;
+}
+function toB64(buf){ let s=""; const b=new Uint8Array(buf); for(let i=0;i<b.length;i+=0x8000) s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(s); }
+function pauseStats(x){
+  const f=800, rms=[]; // 50 ms frames at 16 kHz
+  for(let i=0;i+f<=x.length;i+=f){ let s=0; for(let j=i;j<i+f;j++) s+=x[j]*x[j]; rms.push(Math.sqrt(s/f)); }
+  if(!rms.length) return null;
+  const sorted=[...rms].sort((a,b)=>a-b), p90=sorted[Math.floor(sorted.length*.9)];
+  const th=Math.max(0.006,p90*0.12), voiced=rms.map(r=>r>th);
+  const first=voiced.indexOf(true), last=voiced.lastIndexOf(true);
+  if(first<0) return {long:0,longest:0,total:0};
+  let run=0,long=0,longest=0;
+  for(let i=first;i<=last;i++){ if(voiced[i]){ if(run){ const s=run*.05; if(s>=1.5) long++; if(s>longest) longest=s; run=0; } } else run++; }
+  return {long,longest:Math.round(longest*10)/10,total:(last-first+1)*.05};
+}
+
+/* ================= local analysis ================= */
+const FILLERS=["um","umm","uh","uhh","erm","hmm","basically","actually","literally","obviously","you know","i mean","kind of","sort of","like"];
+const STRUCT=["firstly","secondly","thirdly","first of all","finally","to conclude","in conclusion","to summarise","to summarize","on the other hand","however","moreover","therefore","having said that","coming to"];
+const EXAMPLES=["for example","for instance","such as","case in point","take the case","look at","consider"];
+const STAKE=["consumer","consumers","customer","customers","government","employees","investors","shareholders","farmers","regulator","regulators","society","small businesses","kiranas","workers","students"];
+const HEDGES=["i think","i feel","maybe","probably","i guess","i believe"];
+function countAll(t,list){ let n=0; list.forEach(w=>{ n+=(t.match(new RegExp("\\b"+w.replace(/ /g,"\\s+")+"\\b","gi"))||[]).length; }); return n; }
+function analyze(text,secs,pauses,typed){
+  const t=" "+text.toLowerCase()+" ";
+  const wc=(t.match(/[a-z0-9%₹$']+/g)||[]).length;
+  const wpm=!typed&&secs>8?Math.round(wc/(secs/60)):null;
+  const fillers=countAll(t,FILLERS), fillerRate=wc?fillers/wc*100:0;
+  const data=(t.match(/\b\d[\d,.]*\s*(%|percent|per cent|crore|lakh|billion|million|trillion)?/g)||[]).length;
+  const struct=countAll(t,STRUCT), ex=countAll(t,EXAMPLES), stake=countAll(t,STAKE), hedges=countAll(t,HEDGES);
+  let delivery=null;
+  if(!typed&&wc>0&&wpm!==null){
+    let d=100;
+    if(wpm<120) d-=Math.min(25,(120-wpm)*.5); if(wpm>170) d-=Math.min(25,(wpm-170)*.5);
+    d-=Math.min(30,fillerRate*4); d-=Math.min(15,pauses*5); d-=Math.min(10,hedges*2);
+    delivery=Math.max(0,Math.round(d));
+  }
+  const flags=[];
+  if(wc<40) flags.push("Very short. In a real GD you’d lose the floor; aim for at least 90 to 120 words in a minute.");
+  if(wpm&&wpm<120) flags.push(`Pace ${wpm} wpm is slow for a GD; panels read it as hesitation. Aim for 130 to 160.`);
+  if(wpm&&wpm>175) flags.push(`Pace ${wpm} wpm is rushed; slow down on your key line so it lands.`);
+  if(fillerRate>4) flags.push(`${fillers} filler words (${fillerRate.toFixed(1)} per 100 words). Replace them with a short pause.`);
+  if(pauses>1) flags.push(`${pauses} pauses of 1.5 seconds or more. In a GD someone will cut in.`);
+  if(data===0) flags.push("No numbers. One approximate figure makes a point far more credible.");
+  if(ex===0) flags.push("No explicit example. Anchor at least one argument in a company, policy or case.");
+  if(struct===0&&wc>40) flags.push("No signposting. “Firstly”, “on the other hand” and “to conclude” help the panel follow you.");
+  if(stake===0&&S.topic.cat!=="abstract") flags.push("No stakeholders named. Ask who wins and who loses: consumers, government, employees, investors.");
+  if(hedges>2) flags.push(`${hedges} hedges like “I think” or “maybe”. State the point; your name is already on it.`);
+  if(!flags.length) flags.push("Clean on the basics. Use the panel feedback to push the content further.");
+  return {wc,wpm,fillers,fillerRate,data,struct,ex,hedges,delivery,flags};
+}
+const metric=(v,l,cls)=>`<div class="metric"><div class="v ${cls||""}">${v}</div><div class="l">${l}</div></div>`;
+function renderLocal(text){
+  const secs = S.pause&&S.pause.total>3 ? S.pause.total : S.secs;
+  const pauses = S.pause ? S.pause.long : S.wsPauses;
+  const a=analyze(text,secs,pauses,S.typed);
+  $("metrics").innerHTML=[
+    a.delivery!==null?metric(a.delivery,"Delivery score / 100",a.delivery>=75?"good":a.delivery<55?"bad":""):"",
+    a.wpm!==null?metric(a.wpm,"Words per minute",a.wpm<120||a.wpm>175?"bad":"good"):metric(a.wc,"Words"),
+    metric(a.fillers,"Filler words",a.fillerRate>4?"bad":""),
+    S.pause?metric(S.pause.long,"Pauses ≥ 1.5 s",S.pause.long>1?"bad":""):"",
+    metric(a.data,"Numbers used",a.data===0?"bad":"good"),
+    metric(a.ex,"Examples signalled",a.ex===0?"bad":""),
+    metric(a.struct,"Signposts",a.struct===0?"bad":"")
+  ].join("");
+  $("flags").innerHTML=""; a.flags.forEach(f=>{ const li=document.createElement("li"); li.textContent=f; $("flags").appendChild(li); });
+  $("saidText").textContent=text; show("said");
+  return a;
+}
+
+/* ================= evaluation ================= */
+async function evaluate(){
+  hide("stage"); show("results"); hide("said"); $("metrics").innerHTML=""; $("flags").innerHTML=""; $("panelOut").innerHTML=""; hide("panelBtn");
+  const p=$("player"); if(p.src){ URL.revokeObjectURL(p.src); p.removeAttribute("src"); }
+  if(S.audioBlob){ p.src=URL.createObjectURL(S.audioBlob); show("player"); } else hide("player");
+  $("results").scrollIntoView({behavior:reduceMotion()?"auto":"smooth",block:"start"});
+
+  if(S.audioBlob && !S.typed){
+    try{ const x=await decodeTo16k(S.audioBlob); S.pause=pauseStats(x); S.wav=encodeWav(x,16000); }catch{ S.pause=null; S.wav=null; }
+  }
+  const text = S.typed ? $("typed").value.trim() : S.wsTranscript;
+  if(text) renderLocal(text);
+  if(!aiReady()){
+    if(!text){ $("panelOut").innerHTML='<p class="status">Nothing was captured. Check the microphone and try again, or type your answer.</p>'; return; }
+    $("panelOut").innerHTML='<p class="status">Add your Gemini API key in settings for a full panel scorecard on content, structure and delivery.</p>';
+    return;
+  }
+  if(!text && !S.wav){ $("panelOut").innerHTML='<p class="status">Nothing was captured. Check the microphone and try again, or type your answer.</p>'; return; }
+  runPanel();
+}
+
+let panelCtl=null;
+async function runPanel(){
+  const useAudio = !S.typed && !!S.wav;
+  const text = S.typed ? $("typed").value.trim() : S.wsTranscript;
+  const third = S.mode==="initiate"?"Framing & initiative":S.mode==="addvalue"?"Building on others":"Coverage & balance";
+  const pts = S.points.slice(0, S.mode==="addvalue"?3:6);
+  const role = S.mode==="initiate" ? "The candidate INITIATED the GD (first speaker)."
+    : S.mode==="addvalue" ? "The candidate ENTERED MID-DISCUSSION after these points:\n"+pts.map((p,i)=>`P${i+1}: ${p.text}`).join("\n")
+    : "The candidate SUMMARIZED a discussion that contained these points:\n"+pts.map((p,i)=>`P${(i%5)+1}: ${p.text}`).join("\n");
+  const dur = S.pause&&S.pause.total ? Math.round(S.pause.total) : Math.round(S.secs);
+  const input = useAudio
+    ? `The attached audio is the candidate's contribution (about ${dur} seconds of speech). First transcribe it VERBATIM, keeping every filler (um, uh, like, basically, actually, you know) and false start. Then judge both content and delivery from the audio itself: pace, clarity, confidence, tone, energy and modulation. The candidate is an Indian English speaker; do not penalise accent, only clarity.`
+    : `Candidate's words (typed, so delivery cannot be judged):\n"""${text}"""`;
+  const rubric = [`{"name":"Content & depth","score":0-10,"note":"one sentence"}`,`{"name":"Structure","score":0-10,"note":""}`,`{"name":"${third}","score":0-10,"note":""}`,`{"name":"Originality","score":0-10,"note":""}`, useAudio?`{"name":"Delivery","score":0-10,"note":""}`:`{"name":"Language","score":0-10,"note":""}`].join(",");
+  const prompt = `You are a strict panelist at an Indian B-school final placement group discussion. Score one candidate's contribution.
+Topic: "${S.topic.t}" (${catLabel(S.topic.cat)}, ${lvlLabel(S.topic.lvl)})
+${role}
+${input}
+Calibrate hard: 80+ means likely shortlisted at a top-10 B-school; generic, short or off-topic answers score under 50. For a summary, penalise adding new opinions or dropping a side. For initiation, reward a clear definition or frame and an agenda for the group.
+Return JSON only, exactly this shape:
+{"transcript":"${useAudio?"verbatim transcript":""}","overall":0-100,"verdict":"one honest sentence a panelist would write","rubric":[${rubric}],${useAudio?`"delivery":{"pace":"one sentence","tone":"one sentence on confidence, energy and modulation","fillers":"which fillers you heard and roughly how often"},`:""}"strongest_line":"a short phrase quoted from the candidate, or empty","missed_angles":["three specific angles, frameworks, data points or stakeholders they missed"],"better_version":"how a top candidate would have said it, under 60 words","next_drill":"one specific practice exercise for tomorrow"}`;
+  const parts=[{text:prompt}];
+  if(useAudio) parts.push({inline_data:{mime_type:"audio/wav",data:toB64(S.wav)}});
+
+  hide("panelBtn");
+  $("panelOut").innerHTML='<p class="status">The panelist is '+(useAudio?"listening to":"reading")+' your answer…</p><button class="btn ghost small" id="stopPanel" type="button">Stop</button>';
+  panelCtl=new AbortController(); $("stopPanel").onclick=()=>panelCtl.abort();
+  try{
+    const v=await gemini(parts,panelCtl.signal);
+    if(useAudio && typeof v.transcript==="string" && v.transcript.trim()) renderLocal(v.transcript.trim());
+    else if(!text){ $("metrics").innerHTML=""; }
+    renderPanel(v);
+  }catch(e){
+    $("panelOut").innerHTML=""; const p=document.createElement("p"); p.className="status"; p.textContent=geminiError(e); $("panelOut").appendChild(p);
+    show("panelBtn");
+  }
+}
+
+function renderPanel(v){
+  const o=$("panelOut"); o.innerHTML="";
+  const ver=document.createElement("div"); ver.className="verdict";
+  const big=document.createElement("div"); big.className="big"; big.textContent=String(Math.round(Number(v.overall)||0));
+  const small=document.createElement("small"); small.textContent="/100"; big.appendChild(small);
+  const vt=document.createElement("div"); vt.textContent=v.verdict||""; ver.append(big,vt); o.appendChild(ver);
+  const rub=document.createElement("div"); rub.className="rubric";
+  (Array.isArray(v.rubric)?v.rubric:[]).forEach(r=>{
+    const sc=Math.max(0,Math.min(10,Number(r.score)||0));
+    const row=document.createElement("div"); row.className="row";
+    const l=document.createElement("div"); const name=document.createElement("b"); name.textContent=`${r.name}: ${sc}/10`; l.appendChild(name);
+    const right=document.createElement("div"); const bar=document.createElement("div"); bar.className="bar"; const i=document.createElement("i"); i.style.width=sc*10+"%"; bar.appendChild(i);
+    const n=document.createElement("div"); n.className="note"; n.textContent=r.note||""; right.append(bar,n); row.append(l,right); rub.appendChild(row);
+  });
+  o.appendChild(rub);
+  const call=(title,body)=>{ if(!body) return; const c=document.createElement("div"); c.className="callout"; const b=document.createElement("b"); b.textContent=title; const p=document.createElement("div"); p.textContent=body; c.append(b,p); o.appendChild(c); };
+  if(v.delivery){ call("Pace",v.delivery.pace); call("Tone and confidence",v.delivery.tone); call("Fillers the panelist heard",v.delivery.fillers); }
+  call("Your strongest line", v.strongest_line?`“${v.strongest_line}”`:"");
+  if(Array.isArray(v.missed_angles)&&v.missed_angles.length){
+    const c=document.createElement("div"); c.className="callout"; const b=document.createElement("b"); b.textContent="What you missed";
+    const ul=document.createElement("ul"); ul.className="flags"; ul.style.marginTop="4px";
+    v.missed_angles.slice(0,4).forEach(m=>{ const li=document.createElement("li"); li.textContent=m; ul.appendChild(li); }); c.append(b,ul); o.appendChild(c);
+  }
+  call("How a top candidate would say it", v.better_version);
+  call("Tomorrow’s drill", v.next_drill);
+}
+
+/* ================= wire up ================= */
+loadCfg();
+chips();
+seg($("levels"),LEVELS,"lvl");
+seg($("modes"),MODES,"mode",()=>{ modeHint(); if(S.topic) draw(true); });
+seg($("preps"),PREPS,"prep");
+modeHint(); drawSeats(0); renderKeyState();
+$("keyIn").value=cfg.key; $("remember").checked=cfg.remember;
+if(cfg.model) fillModels([]);
+if(!aiReady()) $("settings").open=true;
+else listModels(cfg.key).then(fillModels).catch(()=>{});
+
+$("saveKey").onclick=connect;
+$("loadModels").onclick=async()=>{ const k=$("keyIn").value.trim()||cfg.key; if(!k){ $("setMsg").textContent="Paste a key first."; return; }
+  $("setMsg").textContent="Loading models…"; try{ fillModels(await listModels(k)); $("setMsg").textContent="Models refreshed. Pick one, then save."; }catch(e){ $("setMsg").textContent="Couldn’t load models: "+(e.message||"network error"); } };
+$("modelSel").onchange=()=>{ cfg.model=$("modelSel").value; if(cfg.key){ saveCfg(); renderKeyState(); } };
+$("clearKey").onclick=()=>{ clearCfg(); $("keyIn").value=""; renderKeyState(); $("setMsg").textContent="Key forgotten on this device."; };
+$("drawBtn").onclick=()=>draw(false);
+$("startBtn").onclick=startRound;
+$("typeBtn").onclick=()=>{ S.secs=0; S.pause=null; hide("results"); setNotice(""); switchToTyping(); };
+$("evalTyped").onclick=()=>{ if(!$("typed").value.trim()){ setNotice("Write your answer first."); return; } S.typed=true; S.audioBlob=null; S.wav=null; S.pause=null; evaluate(); };
+$("panelBtn").onclick=runPanel;
+$("againBtn").onclick=()=>{ hide("results"); startRound(); };
+$("nextBtn").onclick=()=>{ draw(false); window.scrollTo({top:0,behavior:"auto"}); };
+})();
+</script>
+</body>
+</html>

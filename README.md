@@ -30,16 +30,9 @@ With these set, a leaked key is useless anywhere else.
 
 ## Deploy to GitHub Pages
 
-```bash
-git init gd-room && cd gd-room
-cp /path/to/index.html .
-git add index.html README.md && git commit -m "GD Room"
-git branch -M main
-git remote add origin https://github.com/<your-username>/gd-room.git
-git push -u origin main
-```
+Deployment is automated by `.github/workflows/pages.yml`: every push to `main` publishes `index.html` to GitHub Pages.
 
-Then, on GitHub, open **Settings**, then **Pages**. Under **Source**, choose **Deploy from a branch**, pick `main` and `/ (root)`, and save. The site goes live at `https://<your-username>.github.io/gd-room/` within a minute or two.
+One-time setup: on GitHub, open **Settings**, then **Pages**, and under **Source** choose **GitHub Actions**. The site goes live at `https://<your-username>.github.io/<repo-name>/` once the workflow finishes. You can also re-run it by hand from the **Actions** tab (**Deploy to GitHub Pages**, then **Run workflow**).
 
 ## Run locally
 

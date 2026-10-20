@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light only">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>Yap · Placement Prep One-Stop</title>
@@ -11,26 +10,21 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script>try{ if(localStorage.getItem("theme")==="dark") document.documentElement.dataset.theme="dark"; }catch{}</script>
 <style>
 :root{
-  --bg:#EEF2F0; --surface:#FFFFFF; --ink:#18262B; --muted:#55666B; --line:#D3DBD8;
-  --felt:#2F5D50; --felt-2:#264C42; --felt-ink:#F2F6F4; --brass:#B8892E; --brass-ink:#7E5A12; --brass-soft:#F4EAD2;
-  --alert:#A3324A; --ok:#2B7355; --score:#2F5D50;
+  --bg:#F6F1EB; --surface:#FFFFFF; --ink:#2B2019; --muted:#6E6157; --line:#E3D8CC;
+  --felt:#6B4A2F; --felt-2:#523823; --felt-ink:#FBF5EE; --brass:#B8892E; --brass-ink:#7E5A12; --brass-soft:#F4EAD2;
+  --alert:#A3324A; --ok:#2B7355; --score:#6B4A2F;
   color-scheme:light;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#101719; --surface:#172124; --ink:#E4EBE9; --muted:#9BABA7; --line:#2C3A3D;
-    --felt:#2E6A59; --felt-2:#245446; --felt-ink:#EEF5F2; --brass:#D6A84B; --brass-ink:#E3BB66; --brass-soft:#352C1B;
-    --alert:#E58A9C; --ok:#6CC59E; --score:#6CC59E; color-scheme:dark;
-  }
-}
+/* The site opens in light; dark only applies when the toggle sets data-theme="dark". */
 :root[data-theme="dark"]{
-  --bg:#101719; --surface:#172124; --ink:#E4EBE9; --muted:#9BABA7; --line:#2C3A3D;
-  --felt:#2E6A59; --felt-2:#245446; --felt-ink:#EEF5F2; --brass:#D6A84B; --brass-ink:#E3BB66; --brass-soft:#352C1B;
-  --alert:#E58A9C; --ok:#6CC59E; --score:#6CC59E; color-scheme:dark;
+  --bg:#17120E; --surface:#221A14; --ink:#F0E7DE; --muted:#AE9F92; --line:#3B3028;
+  --felt:#8A6243; --felt-2:#6C4C33; --felt-ink:#FBF5EE; --brass:#D6A84B; --brass-ink:#E3BB66; --brass-soft:#362A1A;
+  --alert:#E58A9C; --ok:#6CC59E; --score:#D9B08C; color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:inherit}
 html{height:100%; scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -156,7 +150,9 @@ details.said p{white-space:pre-wrap; margin:8px 0 0}
 .status{color:var(--muted); font-size:15px}
 footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
 
-/* tabs */
+/* tabs & theme */
+.head-right{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.theme-btn{white-space:nowrap}
 .tabs button{font-weight:600}
 .tabs button[aria-pressed="true"]{background:var(--ink); color:var(--bg)}
 #gdApp[hidden],#yapApp[hidden]{display:none}
@@ -185,9 +181,12 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
 <div class="wrap">
   <header class="top">
     <div class="brand">Placement Prep One-Stop <small id="brandSub">speaking practice for MBA placement interviews</small></div>
-    <div class="seg tabs" role="group" aria-label="Practice mode">
-      <button type="button" id="tabGd" aria-pressed="false">GD Room</button>
-      <button type="button" id="tabYap" aria-pressed="true">Yap: daily speaking</button>
+    <div class="head-right">
+      <div class="seg tabs" role="group" aria-label="Practice mode">
+        <button type="button" id="tabGd" aria-pressed="false">GD Room</button>
+        <button type="button" id="tabYap" aria-pressed="true">Yap: daily speaking</button>
+      </div>
+      <button class="btn ghost small theme-btn" id="themeBtn" type="button" aria-pressed="false">🌙 Dark</button>
     </div>
   </header>
 
@@ -1396,22 +1395,22 @@ async function scoreCard(){
   try{ await document.fonts.ready; }catch{}
   const W=1080,H=1350, c=document.createElement("canvas"); c.width=W; c.height=H; const x=c.getContext("2d");
   const D="'Bricolage Grotesque', system-ui, sans-serif", B="'IBM Plex Sans', system-ui, sans-serif";
-  const g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,"#2F5D50"); g.addColorStop(1,"#1d3a32"); x.fillStyle=g; x.fillRect(0,0,W,H);
-  x.textAlign="center"; x.fillStyle="#F2F6F4";
+  const g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,"#6B4A2F"); g.addColorStop(1,"#3A271A"); x.fillStyle=g; x.fillRect(0,0,W,H);
+  x.textAlign="center"; x.fillStyle="#FBF5EE";
   x.font=`600 26px ${B}`; x.globalAlpha=.75; x.fillText("YAP · MBA INTERVIEW SPEAKING REP",W/2,110); x.globalAlpha=1;
   const c0=catOf(Y.q.cat); x.font=`500 30px ${B}`; x.globalAlpha=.85; x.fillText(`${c0.emoji} ${c0.label} · ${lvlOf(Y.q.lvl).label}`,W/2,170); x.globalAlpha=1;
   x.font=`700 56px ${D}`; let y=270; const lines=wrap(x,`“${Y.q.t}”`,880).slice(0,4);
   lines.forEach(l=>{ x.fillText(l,W/2,y); y+=70; });
   const cy=y+190, R=150;
-  x.lineWidth=24; x.lineCap="round"; x.strokeStyle="rgba(242,246,244,.18)"; x.beginPath(); x.arc(W/2,cy,R,0,Math.PI*2); x.stroke();
+  x.lineWidth=24; x.lineCap="round"; x.strokeStyle="rgba(251,245,238,.18)"; x.beginPath(); x.arc(W/2,cy,R,0,Math.PI*2); x.stroke();
   x.strokeStyle="#D6A84B"; x.beginPath(); x.arc(W/2,cy,R,-Math.PI/2,-Math.PI/2+Math.max(.02,m.score/100)*Math.PI*2); x.stroke();
-  x.fillStyle="#F2F6F4"; x.font=`800 140px ${D}`; x.fillText(String(m.score),W/2,cy+48);
+  x.fillStyle="#FBF5EE"; x.font=`800 140px ${D}`; x.fillText(String(m.score),W/2,cy+48);
   x.font=`600 24px ${B}`; x.globalAlpha=.75; x.fillText("DELIVERY SCORE / 100",W/2,cy+R+62); x.globalAlpha=1;
   x.font=`700 40px ${D}`; x.fillStyle="#E3BB66"; x.fillText(band(m.score)[0],W/2,cy+R+120);
   const stats=[[String(m.wpm),"words / min"],[String(m.fillers),"filler words"],[String(m.words),"words spoken"]], top=cy+R+170;
-  stats.forEach(([v,l],i)=>{ const bx=90+i*310; x.fillStyle="rgba(242,246,244,.1)"; rr(x,bx,top,280,170,28); x.fill();
-    x.fillStyle="#F2F6F4"; x.font=`800 64px ${D}`; x.fillText(v,bx+140,top+92); x.font=`500 24px ${B}`; x.globalAlpha=.8; x.fillText(l,bx+140,top+136); x.globalAlpha=1; });
-  x.font=`600 28px ${B}`; x.fillStyle="#F2F6F4"; x.fillText("your turn → "+location.host+location.pathname.replace(/\/$/,""),W/2,H-70);
+  stats.forEach(([v,l],i)=>{ const bx=90+i*310; x.fillStyle="rgba(251,245,238,.1)"; rr(x,bx,top,280,170,28); x.fill();
+    x.fillStyle="#FBF5EE"; x.font=`800 64px ${D}`; x.fillText(v,bx+140,top+92); x.font=`500 24px ${B}`; x.globalAlpha=.8; x.fillText(l,bx+140,top+136); x.globalAlpha=1; });
+  x.font=`600 28px ${B}`; x.fillStyle="#FBF5EE"; x.fillText("your turn → "+location.host+location.pathname.replace(/\/$/,""),W/2,H-70);
   const blob=await new Promise(r=>c.toBlob(r,"image/png")); if(!blob) return;
   const file=new File([blob],"yap-score.png",{type:"image/png"});
   try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:"My Yap score"}); return; } }catch(e){ if(e&&e.name==="AbortError") return; }
@@ -1452,6 +1451,14 @@ $("yNext").onclick=()=>{ draw(); $("yapApp").scrollIntoView({behavior:"auto",blo
 $("yChallenge").onclick=()=>challenge("yHint");
 $("yChallenge2").onclick=()=>challenge("yShareMsg");
 $("yCardBtn").onclick=scoreCard;
+function setTheme(t,save=true){
+  const dark=t==="dark"; document.documentElement.dataset.theme=dark?"dark":"light";
+  $("themeBtn").textContent=dark?"☀️ Light":"🌙 Dark"; $("themeBtn").setAttribute("aria-pressed",String(dark));
+  $("themeBtn").setAttribute("aria-label",dark?"Switch to light theme":"Switch to dark theme");
+  if(save){ try{ localStorage.setItem("theme",dark?"dark":"light"); }catch{} }
+}
+setTheme(document.documentElement.dataset.theme,false);
+$("themeBtn").onclick=()=>setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark");
 $("tabGd").onclick=()=>setTab("gd");
 $("tabYap").onclick=()=>setTab("yap");
 

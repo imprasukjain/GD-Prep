@@ -1,6 +1,6 @@
 # Placement Prep One-Stop
 
-Speaking practice in a single static page: no backend, no database, no login. It has two modes, switched with the tabs at the top.
+Speaking practice in a single static page: no backend, no database, no login. It has two modes, switched with the tabs at the top. It always opens in the light theme; the 🌙 Dark button in the header switches to dark, and the page remembers your choice on that device.
 
 - **GD Room:** group discussion practice for MBA placements, with optional Gemini feedback.
 - **Yap: daily speaking** (opens by default): speaking practice for MBA placement interviews, scored entirely in the browser. No AI and no key. If you switch to GD Room, the page remembers that on your device.

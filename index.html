@@ -53,6 +53,7 @@ header.top{display:flex; justify-content:space-between; align-items:baseline; ga
 .settings[open] summary::after{content:"Hide"}
 .key-state{font-weight:500; font-size:14px; color:var(--muted); margin-left:8px}
 .key-state.on{color:var(--ok)}
+.key-why{display:block; font-weight:400; font-size:13px; color:var(--muted)}
 .set-body{padding:0 16px 16px; display:grid; gap:10px; max-width:640px}
 .set-body label{font-size:14px; font-weight:600; color:var(--muted)}
 .field{width:100%; border:1.5px solid var(--line); border-radius:10px; padding:10px 12px; background:var(--bg)}
@@ -171,6 +172,12 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
 .signals .ic{font-weight:700; text-align:center}
 .signals .ic.good{color:var(--ok)} .signals .ic.warn{color:var(--brass-ink)}
 .metric .s{font-size:12.5px; color:var(--muted); margin-top:2px}
+.badge{display:inline-block; padding:3px 10px; border-radius:999px; font-size:13.5px; font-weight:600; background:var(--brass-soft); color:var(--brass-ink); margin-right:8px}
+.badge.good{background:color-mix(in srgb,var(--ok) 15%,transparent); color:var(--ok)}
+.badge.bad{background:color-mix(in srgb,var(--alert) 13%,transparent); color:var(--alert)}
+.fix{margin:6px 0 0; padding-left:18px; font-size:15px}
+.fix li{margin:6px 0}
+.fix .was{text-decoration:line-through; color:var(--muted)}
 #yapApp [hidden]{display:none !important}
 </style>
 </head>
@@ -184,9 +191,8 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
     </div>
   </header>
 
-  <div id="gdApp" hidden>
   <details class="settings" id="settings">
-    <summary><span>Gemini settings <span class="key-state" id="keyState"></span></span></summary>
+    <summary><span>Gemini settings <span class="key-state" id="keyState"></span><span class="key-why">optional: GD panel feedback and Yap answer checks</span></span></summary>
     <div class="set-body">
       <label for="keyIn">API key</label>
       <input class="field" id="keyIn" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key from Google AI Studio">
@@ -200,6 +206,8 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
       <p class="hint" id="setMsg">Your key goes only from this browser to Google’s Gemini API. Without “Remember”, it’s cleared when you close the tab.</p>
     </div>
   </details>
+
+  <div id="gdApp" hidden>
 
   <section class="room">
     <div>
@@ -263,7 +271,7 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
   <footer>Nothing is saved: each round is gone when you leave or start the next one. With a Gemini key, your recording is sent to Google for transcription and feedback; on the API’s free tier Google may use that content to improve its products. Without a key, your browser’s own speech recognition is used and only delivery metrics are shown.</footer>
   </div>
   <div id="yapApp">
-    <p class="yap-intro">Placement interview speaking practice: HR, domain, case and GD-style questions. Pick a topic, think for a few seconds, then answer out loud. You get a delivery score for pace, fillers and staying power, plus keyword signals on what you said. No AI and no key. Scoring runs in this page; only your browser’s own speech service hears you.</p>
+    <p class="yap-intro">Placement interview speaking practice: HR, domain, case and GD-style questions. Pick a topic, think for a few seconds, then answer out loud. You get a delivery score for pace, fillers and staying power, plus keyword signals on what you said. That scoring runs in this page with no AI. Add a Gemini key in the settings above and Yap also checks whether your answer is correct.</p>
     <div class="notice" id="yEnv"></div>
 
     <section class="room">
@@ -322,6 +330,10 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
         <p class="hint" style="margin-top:4px">Keyword patterns, not understanding. Treat them as nudges, not a verdict.</p>
         <ul class="signals" id="ySignals"></ul>
       </div>
+      <div class="panel" id="yCheck" hidden>
+        <div class="panel-head"><h3>Is it correct?</h3><button class="btn ghost small" id="yCheckBtn" type="button" hidden>Check my answer with Gemini</button></div>
+        <div id="yCheckOut"></div>
+      </div>
       <details class="said" id="ySaid"><summary>What the speech engine heard</summary><p id="ySaidText"></p></details>
       <div class="actions" style="margin-top:22px">
         <button class="btn" id="yAgain" type="button">Try again</button>
@@ -332,7 +344,7 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
       <p class="hint" id="yShareMsg" aria-live="polite"></p>
     </section>
 
-    <footer>Yap uses your browser’s built-in speech recognition (Chrome and Edge send the audio to Google, Safari to Apple; Firefox doesn’t support it). Nothing is sent to this site, and nothing is saved except a count of the days you practised, kept in this browser for your streak.</footer>
+    <footer>Yap uses your browser’s built-in speech recognition (Chrome and Edge send the audio to Google, Safari to Apple; Firefox doesn’t support it). Nothing is sent to this site, and nothing is saved except a count of the days you practised, kept in this browser for your streak. With a Gemini key, the answer check sends the question and your transcript text (no audio) to Google.</footer>
   </div>
 </div>
 
@@ -473,6 +485,7 @@ async function connect(){
     fillModels(ms); cfg.model=$("modelSel").value; saveCfg(); renderKeyState();
     $("setMsg").textContent=`Connected. Using ${cfg.model}. Flash models are fast and cheap; Pro models give deeper critique but hit free-tier limits sooner.`;
     $("settings").open=false;
+    document.dispatchEvent(new CustomEvent("ai:ready"));
     if(S.topic && S.mode!=="initiate" && !S.points.length) draw(true);
   }catch(e){
     $("setMsg").textContent = e.code===400||e.code===403 ? "Google rejected that key. Copy it again from AI Studio." : "Couldn’t connect: "+(e.message||"network error");
@@ -844,6 +857,7 @@ function renderPanel(v){
 }
 
 /* ================= wire up ================= */
+window.PrepAI = {ready:aiReady, call:gemini, error:geminiError};
 document.addEventListener("app:leave",()=>{
   clearInterval(timer);
   if(S.recording){ S.recording=false; try{ rec&&rec.abort(); }catch{} try{ recorder&&recorder.state!=="inactive"&&recorder.stop(); }catch{} stopStream(); }
@@ -857,8 +871,7 @@ seg($("preps"),PREPS,"prep");
 modeHint(); drawSeats(0); renderKeyState();
 $("keyIn").value=cfg.key; $("remember").checked=cfg.remember;
 if(cfg.model) fillModels([]);
-if(!aiReady()) $("settings").open=true;
-else listModels(cfg.key).then(fillModels).catch(()=>{});
+if(aiReady()) listModels(cfg.key).then(fillModels).catch(()=>{});
 
 $("saveKey").onclick=connect;
 $("loadModels").onclick=async()=>{ const k=$("keyIn").value.trim()||cfg.key; if(!k){ $("setMsg").textContent="Paste a key first."; return; }
@@ -996,6 +1009,7 @@ function pick(cat,lvl){
   const q=left[Math.floor(Math.random()*left.length)]; seen.add(q.id); return q;
 }
 function showQ(q,challenged){
+  if(checkCtl){ checkCtl.abort(); checkCtl=null; }
   Y.q=q; Y.challenged=!!challenged;
   const c=catOf(q.cat);
   $("yTag").textContent=(challenged?"A friend challenged you · ":"")+`${c.emoji} ${c.label} · ${lvlOf(q.lvl).label}`;
@@ -1087,7 +1101,7 @@ function stopRec(abort){ const r=rec; if(!r) return; try{ abort?r.abort():r.stop
 /* ================= round flow ================= */
 function startRound(){
   if(!Y.q) return;
-  clearInterval(timer); stopRec(true);
+  clearInterval(timer); stopRec(true); if(checkCtl){ checkCtl.abort(); checkCtl=null; }
   hide("yResults"); show("yStage"); notice(""); $("yTranscript").textContent=""; $("yStop").hidden=false;
   $("yStage").scrollIntoView({behavior:reduceMotion()?"auto":"smooth",block:"start"});
   if(Y.prep>0){
@@ -1274,6 +1288,65 @@ function render(m){
   $("yTip").textContent=tipFor(m);
   $("ySaidText").textContent=m.text||""; $("ySaid").hidden=!m.text;
   renderStreak();
+  checkIntro(m);
+}
+
+/* ================= answer check (Gemini, optional) ================= */
+const AUTO_CHECK = new Set(["mkt","fin","ops","hrm","strat","prod","econ"]);
+let checkCtl=null;
+function checkStatus(msg,withSettings){
+  const o=$("yCheckOut"); o.innerHTML="";
+  const p=document.createElement("p"); p.className="status"; p.textContent=msg; o.appendChild(p);
+  if(withSettings){ const b=document.createElement("button"); b.type="button"; b.className="btn ghost small"; b.textContent="Open Gemini settings";
+    b.onclick=()=>{ $("settings").open=true; $("settings").scrollIntoView({behavior:reduceMotion()?"auto":"smooth",block:"start"}); $("keyIn").focus(); }; o.appendChild(b); }
+}
+function checkIntro(m){
+  if(checkCtl){ checkCtl.abort(); checkCtl=null; }
+  hide("yCheckBtn");
+  if(!m.capturing || m.words<15){ hide("yCheck"); return; }
+  show("yCheck");
+  const ai=window.PrepAI;
+  if(!ai||!ai.ready()){ checkStatus("Want to know if what you said is actually right? Add your Gemini API key and Yap will check your facts, concepts and reasoning after each answer.",true); return; }
+  if(AUTO_CHECK.has(Y.q.cat)) runCheck();
+  else { checkStatus("Gemini can check your facts and reasoning for this answer too."); $("yCheckBtn").textContent="Check my answer with Gemini"; show("yCheckBtn"); }
+}
+async function runCheck(){
+  const m=Y.last, ai=window.PrepAI; if(!m||!ai) return;
+  const c=catOf(Y.q.cat);
+  const prompt=`You are an MBA placement interviewer and a subject expert in ${c.label}. A candidate answered this interview question out loud. The text below is an automatic speech-to-text transcript, so ignore filler words and read obviously misheard words charitably (for example "four piece" means "4Ps").
+Question: "${Y.q.t}" (${c.label}, ${lvlOf(Y.q.lvl).label} level)
+Transcript: """${heard.slice(0,6000)}"""
+Judge the CONTENT only, not delivery. Check every definition, framework, fact and number for correctness. For case, opinion or HR questions, judge whether the reasoning is sound and whether the concepts and facts used are right. Be strict but fair, and never invent errors that are not in the transcript. Write for an Indian MBA student preparing for placements.
+Return JSON only, exactly this shape:
+{"verdict":"Accurate|Mostly accurate|Partly accurate|Inaccurate|Off-topic","accuracy":0-10,"summary":"one honest sentence","correct":["up to 3 things they got right"],"errors":[{"said":"short paraphrase of what they said that is wrong","fix":"the correct version"}],"missing":["up to 3 key points a strong answer would include"],"model_answer":"how a strong candidate would answer, under 80 words","follow_up":"one follow-up question the interviewer would likely ask next"}`;
+  hide("yCheckBtn"); checkStatus("Gemini is checking your answer…");
+  const ctl=checkCtl=new AbortController();
+  try{
+    const v=await ai.call([{text:prompt}],ctl.signal);
+    if(ctl!==checkCtl) return;
+    renderCheck(v);
+  }catch(e){
+    if(ctl!==checkCtl) return;
+    checkStatus(ai.error(e)); $("yCheckBtn").textContent="Try the check again"; show("yCheckBtn");
+  }finally{ if(ctl===checkCtl) checkCtl=null; }
+}
+function renderCheck(v){
+  const o=$("yCheckOut"); o.innerHTML="";
+  const acc=Math.max(0,Math.min(10,Math.round(Number(v.accuracy)||0)));
+  const head=document.createElement("p"); head.style.margin="10px 0 4px";
+  const badge=document.createElement("span"); badge.className="badge "+(acc>=8?"good":acc<5?"bad":""); badge.textContent=`${v.verdict||"Checked"} · ${acc}/10`;
+  head.append(badge, document.createTextNode(v.summary||"")); o.appendChild(head);
+  const list=(title,items,mk)=>{ if(!Array.isArray(items)||!items.length) return;
+    const c=document.createElement("div"); c.className="callout"; const b=document.createElement("b"); b.textContent=title; const ul=document.createElement("ul"); ul.className="fix";
+    items.slice(0,4).forEach(it=>{ const li=document.createElement("li"); mk(li,it); if(li.textContent) ul.appendChild(li); }); if(ul.children.length){ c.append(b,ul); o.appendChild(c); } };
+  list("What you got right",v.correct,(li,t)=>{ li.textContent=typeof t==="string"?t:""; });
+  list("What was wrong, and the fix",v.errors,(li,e)=>{ if(!e||typeof e!=="object") return;
+    const was=document.createElement("span"); was.className="was"; was.textContent=e.said||""; li.append(was, document.createTextNode((e.said?" → ":"")+(e.fix||""))); });
+  list("What a strong answer also covers",v.missing,(li,t)=>{ li.textContent=typeof t==="string"?t:""; });
+  const call=(title,body)=>{ if(!body) return; const c=document.createElement("div"); c.className="callout"; const b=document.createElement("b"); b.textContent=title; const d=document.createElement("div"); d.textContent=body; c.append(b,d); o.appendChild(c); };
+  call("A strong answer, in under 80 words",v.model_answer);
+  call("Be ready for this follow-up",v.follow_up);
+  const n=document.createElement("p"); n.className="hint"; n.textContent="Gemini can be wrong too. Double-check anything that surprises you before an interview."; o.appendChild(n);
 }
 function animateScore(target){
   const el=$("yScore"), small='<small>/100</small>';
@@ -1361,7 +1434,10 @@ function setTab(name,save=true){
 document.addEventListener("app:leave",()=>{
   if($("yapApp").hidden) return;
   clearInterval(timer); Y.running=false; Y.phase="idle"; stopRec(true); hide("yStage");
+  if(checkCtl){ checkCtl.abort(); checkCtl=null; }
 });
+$("yCheckBtn").onclick=runCheck;
+document.addEventListener("ai:ready",()=>{ if(!$("yResults").hidden && !$("yCheck").hidden && Y.last && !checkCtl) checkIntro(Y.last); });
 
 /* ================= wire up ================= */
 fillCats(); segY($("yLevels"),YLEVELS,"lvl",lvlHint); segY($("ySecs"),SECS,"secs"); segY($("yPreps"),PREPS,"prep"); lvlHint(); renderStreak();

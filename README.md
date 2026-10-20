@@ -21,6 +21,7 @@ Speaking practice in a single static page: no backend, no database, no login. It
   - Staying power, up to 20 points: full marks for talking the whole time.
 - **Fair-capture checks:** under 20 words or 20 seconds is "too short to score". Talking for 20 seconds or more but captured at under 40 wpm means the speech service dropped out, so no score is given. Echoed text that some Android phones resend is removed before counting.
 - **Feedback:** a score band, a pace verdict, one targeted tip for the next rep, and keyword signals on what you said: word variety, an overused word, whether you gave an example, linked your ideas, hedged a lot, or landed a closing line. These are pattern matches, not understanding.
+- **Is it correct? (optional, needs a Gemini key):** after a round, the question and your transcript text (no audio) go to Gemini. It returns a verdict and accuracy out of 10, what you got right, what was wrong with the correct version, what a strong answer also covers, a model answer under 80 words, and the follow-up an interviewer would likely ask. It runs automatically for the seven domain categories; for HR, behavioural, case and other questions there's a button. Without a key, Yap shows a prompt to add one.
 - **Sharing:** *Challenge a friend* copies or shares a link like `?yap=fin-m1` that opens the same question. *Save score card* makes a 1080×1350 PNG.
 - **Streak:** the days you practised are kept in this browser only, to show a daily streak.
 
@@ -36,7 +37,7 @@ Speaking practice in a single static page: no backend, no database, no login. It
 ## Get a Gemini API key
 
 1. Go to https://aistudio.google.com and choose **Get API key**, then **Create API key**.
-2. Open the deployed site, expand **Gemini settings**, paste the key and click **Save and connect**.
+2. Open the deployed site, expand **Gemini settings** at the top (shared by both tabs), paste the key and click **Save and connect**.
 3. Tick **Remember on this device** only on your own phone or laptop.
 
 The key never goes in this repo. It lives only in your browser's storage and is sent only to `generativelanguage.googleapis.com`.

@@ -330,7 +330,7 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
         <ul class="signals" id="ySignals"></ul>
       </div>
       <div class="panel" id="yCheck" hidden>
-        <div class="panel-head"><h3>Is it correct?</h3><button class="btn ghost small" id="yCheckBtn" type="button" hidden>Check my answer with Gemini</button></div>
+        <div class="panel-head"><h3 id="yCheckHead">Content check</h3><button class="btn ghost small" id="yCheckBtn" type="button" hidden>Check my answer with Gemini</button></div>
         <div id="yCheckOut"></div>
       </div>
       <details class="said" id="ySaid"><summary>What the speech engine heard</summary><p id="ySaidText"></p></details>
@@ -1180,8 +1180,8 @@ function countFillers(ws,lost){
 }
 const SIG = {
   example:["for example","for instance","as a result","the result was","we achieved","in my internship","at my previous","like when","one time","i remember","the other day","last week","last month","last year","when i was","there was this","imagine"],
-  link:["because","that's why","which means","so that","but","however","on the other hand","first","firstly","second","secondly","then","finally","also"],
-  close:["to conclude","in conclusion","to summarise","to summarize","so my answer","so that's","that's why","in short","to sum up","at the end of the day","bottom line","so yeah","and that's","which is why","overall","finally"],
+  link:["because","since","that's why","which is why","which means","so that","as a result","therefore","but","however","although","on the other hand","first","firstly","second","secondly","third","next","then","after that","finally","also","another","apart from","along with","plus","for that","due to"],
+  close:["to conclude","in conclusion","to summarise","to summarize","so my answer","so that's","so that is","that's why","that is why","this is why","which is why","that's what","that is what","in short","to sum up","at the end of the day","bottom line","so yeah","and that's","overall","finally","hence","so overall","in a nutshell","thank you"],
   hedge:["i think","i feel like","maybe","probably","i guess","i don't know","not sure","sort of","kind of"]
 };
 const STOP = new Set("a an the and or but so to of in on at for with from by is are was were be been being it its it's this that these those i me my we our you your he she they them their his her i'm i've i'd you're we're they're there here what which who when where why how not no yes do does did don't didn't have has had just very really like can could would should will about as if then than also one all some more most any up out into over get got go going gonna want know think yeah um uh".split(" "));
@@ -1199,9 +1199,9 @@ function score(text,secs,full,lost,cap){
   const incomplete = secs>=20 && words>0 && wpm<40;
   const unstable = cap.errs>0 || cap.gapMs>4000 || incomplete;
   if(!words) return {words:0,dur,wpm:0,fillers:0,top:[],score:0,tooShort:false,incomplete:false,unstable,text:""};
-  // 55 pts pace (peak at 145 wpm, zero at ±100), 25 pts fillers (zero at 16 per 100 words), 20 pts staying power
+  // 55 pts pace (full marks 120-160 wpm, zero at 60 or 240), 25 pts fillers (zero at 16 per 100 words), 20 pts staying power
   const rate=fillers/words*100;
-  const pace=Math.max(0,55-Math.abs(wpm-145)*0.55);
+  const pace = wpm<120 ? Math.max(0,55*(wpm-60)/60) : wpm<=160 ? 55 : Math.max(0,55*(1-(wpm-160)/80));
   const clean=Math.max(0,25-rate*25/16);
   const stay = full ? 20 : (words>=8&&secs>=8 ? 15+Math.min(5,secs/Y.secs*5) : Math.min(15,secs/8*15));
   const total=Math.max(0,Math.min(100,Math.round(pace+clean+stay)));
@@ -1217,8 +1217,8 @@ function paceWord(w){ return w<110?"slow and steady":w<135?"relaxed and conversa
 function paceLine(w){
   if(w<100) return "🐢 Slow. Calm is good, but listeners start to drift below about 110 words a minute.";
   if(w<120) return "🚶 Relaxed. Lift the energy slightly and you’re in the zone.";
-  if(w<=150) return "🎯 Right in the zone, between 120 and 150 words a minute. Easy to follow, never dull.";
-  if(w<=170) return "🏃 Brisk. Lively, but let your key lines breathe.";
+  if(w<=160) return "🎯 Right in the zone, between 120 and 160 words a minute. Easy to follow, never dull.";
+  if(w<=180) return "🏃 Brisk. Lively, but let your key lines breathe.";
   return "🚀 Very fast. Your listener is catching about half of it. Slow down and pause between ideas.";
 }
 const TIPS = {
@@ -1245,13 +1245,15 @@ function signals(m){
     if(n>=4 && !Y.q.t.toLowerCase().includes(w)) out.push(["warn",`You said “${w}” ${n} times. Find another way to say it, or cut it.`]);
   }
   const ex=has(t,SIG.example);
-  out.push(ex?["good","You grounded it with an example or a moment from real life."]:["warn","No example or story spotted. One specific moment makes any answer stick."]);
-  const link=has(t,SIG.link);
-  out.push(link>=3?["good","You linked your ideas (because, but, then, finally…), so it was easy to follow."]:["warn","Few linking words. Try “because”, “but” and “that’s why” to connect your points."]);
+  const wantsExample = Y.q.cat==="behav" || /example|a time|a moment|story|proud|failure|learn from|using a brand|with a product/i.test(Y.q.t);
+  if(ex) out.push(["good","You grounded it with an example or a real moment."]);
+  else if(wantsExample) out.push(["warn","This question calls for a specific example or story, and none was spotted. Name the situation, what you did and the result."]);
+  const link=has(t,SIG.link), needLinks=Math.max(2,Math.round(m.words/60));
+  out.push(link>=needLinks?["good","You linked your ideas (because, but, then, also…), so it was easy to follow."]:["warn",`Only ${link} linking word${link===1?"":"s"} spotted. Words like “because”, “also” and “that’s why” help the listener follow you.`]);
   const hedge=has(t,SIG.hedge);
   if(hedge>=3) out.push(["warn",`${hedge} hedges like “I think”, “maybe” or “I guess”. Say it like you mean it.`]);
-  if(m.words>=40){
-    const tail=ws.slice(-14).join(" ");
+  if(m.words>=60){
+    const tail=ws.slice(-25).join(" ");
     out.push(has(tail,SIG.close)?["good","You landed a closing line instead of just stopping."]:["warn","You stopped rather than finished. End with one line that sums up your point."]);
   }
   return out;
@@ -1268,7 +1270,8 @@ function render(m){
     : !m.words ? "Nothing was captured. Check that the right microphone is selected and the site is allowed to use it, then try again."
     : m.incomplete ? "You talked for a while, but the speech engine only passed on part of it, so there’s nothing fair to score. Check your microphone (a laptop’s built-in or a wired mic works best) and go again."
     : m.tooShort ? "Too short to score fairly. Aim for at least 20 seconds and we can read your pace properly."
-    : m.unstable ? "Heads up: the speech service dropped out during this take, so it missed some words. Your real score is probably higher." : "";
+    : m.unstable ? "Heads up: the speech service dropped out during this take, so it missed some words. Your real score is probably higher."
+    : m.wpm<85 ? `Only ${m.words} words were caught in ${m.dur} seconds. If you were speaking steadily, the browser’s speech engine probably missed some, which drags the pace score down. Open “What the speech engine heard” below to check. A wired or laptop mic in a quiet room helps.` : "";
   $("yVerdict").hidden=!scored; $("yPace").parentElement.hidden=!scored; $("ySignalsWrap").hidden=!scored;
   $("yCardBtn").hidden=!scored;
   if(scored){
@@ -1305,9 +1308,9 @@ function checkIntro(m){
   if(!m.capturing || m.words<15){ hide("yCheck"); return; }
   show("yCheck");
   const ai=window.PrepAI;
-  if(!ai||!ai.ready()){ checkStatus("Want to know if what you said is actually right? Add your Gemini API key and Yap will check your facts, concepts and reasoning after each answer.",true); return; }
-  if(AUTO_CHECK.has(Y.q.cat)) runCheck();
-  else { checkStatus("Gemini can check your facts and reasoning for this answer too."); $("yCheckBtn").textContent="Check my answer with Gemini"; show("yCheckBtn"); }
+  $("yCheckHead").textContent = AUTO_CHECK.has(Y.q.cat) ? "Is it correct?" : "How good was the answer?";
+  if(!ai||!ai.ready()){ checkStatus("The score above can’t judge what you said. Add your Gemini API key and Yap will judge the content of every answer: facts and concepts for domain questions, substance and structure for HR and other questions.",true); return; }
+  runCheck();
 }
 async function runCheck(){
   const m=Y.last, ai=window.PrepAI; if(!m||!ai) return;
@@ -1315,9 +1318,12 @@ async function runCheck(){
   const prompt=`You are an MBA placement interviewer and a subject expert in ${c.label}. A candidate answered this interview question out loud. The text below is an automatic speech-to-text transcript, so ignore filler words and read obviously misheard words charitably (for example "four piece" means "4Ps").
 Question: "${Y.q.t}" (${c.label}, ${lvlOf(Y.q.lvl).label} level)
 Transcript: """${heard.slice(0,6000)}"""
-Judge the CONTENT only, not delivery. Check every definition, framework, fact and number for correctness. For case, opinion or HR questions, judge whether the reasoning is sound and whether the concepts and facts used are right. Be strict but fair, and never invent errors that are not in the transcript. Write for an Indian MBA student preparing for placements.
+Judge the CONTENT only, not delivery (pace and fillers are scored separately). ${AUTO_CHECK.has(Y.q.cat)
+  ? `This is a domain question: check every definition, framework, fact and number for correctness.`
+  : `This is not a factual question. Judge it as a placement panel would: does it answer what was asked, is it specific and credible, is it well structured, and does it suit the question type (for example, a crisp present-past-future flow for "tell me about yourself", situation-action-result for behavioural questions, a clear structure for cases and guesstimates). Do not demand examples or numbers the question doesn't need. List as "errors" only things that are wrong or would hurt the candidate, such as a weakness that is really a strength, a claim that contradicts itself, or a wrong concept or number.`}
+Be strict but fair, and never invent problems that are not in the transcript. Write for an Indian MBA student preparing for placements.
 Return JSON only, exactly this shape:
-{"verdict":"Accurate|Mostly accurate|Partly accurate|Inaccurate|Off-topic","accuracy":0-10,"summary":"one honest sentence","correct":["up to 3 things they got right"],"errors":[{"said":"short paraphrase of what they said that is wrong","fix":"the correct version"}],"missing":["up to 3 key points a strong answer would include"],"model_answer":"how a strong candidate would answer, under 80 words","follow_up":"one follow-up question the interviewer would likely ask next"}`;
+{"verdict":"${AUTO_CHECK.has(Y.q.cat)?"Accurate|Mostly accurate|Partly accurate|Inaccurate|Off-topic":"Strong|Good|Average|Weak|Off-topic"}","accuracy":0-10,"summary":"one honest sentence","correct":["up to 3 things they got right"],"errors":[{"said":"short paraphrase of what they said that is wrong","fix":"the correct version"}],"missing":["up to 3 key points a strong answer would include"],"model_answer":"how a strong candidate would answer, under 80 words","follow_up":"one follow-up question the interviewer would likely ask next"}`;
   hide("yCheckBtn"); checkStatus("Gemini is checking your answer…");
   const ctl=checkCtl=new AbortController();
   try{
@@ -1339,7 +1345,7 @@ function renderCheck(v){
     const c=document.createElement("div"); c.className="callout"; const b=document.createElement("b"); b.textContent=title; const ul=document.createElement("ul"); ul.className="fix";
     items.slice(0,4).forEach(it=>{ const li=document.createElement("li"); mk(li,it); if(li.textContent) ul.appendChild(li); }); if(ul.children.length){ c.append(b,ul); o.appendChild(c); } };
   list("What you got right",v.correct,(li,t)=>{ li.textContent=typeof t==="string"?t:""; });
-  list("What was wrong, and the fix",v.errors,(li,e)=>{ if(!e||typeof e!=="object") return;
+  list(AUTO_CHECK.has(Y.q.cat)?"What was wrong, and the fix":"What would hurt you, and the fix",v.errors,(li,e)=>{ if(!e||typeof e!=="object") return;
     const was=document.createElement("span"); was.className="was"; was.textContent=e.said||""; li.append(was, document.createTextNode((e.said?" → ":"")+(e.fix||""))); });
   list("What a strong answer also covers",v.missing,(li,t)=>{ li.textContent=typeof t==="string"?t:""; });
   const call=(title,body)=>{ if(!body) return; const c=document.createElement("div"); c.className="callout"; const b=document.createElement("b"); b.textContent=title; const d=document.createElement("div"); d.textContent=body; c.append(b,d); o.appendChild(c); };

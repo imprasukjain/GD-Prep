@@ -295,6 +295,7 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
         <div class="group"><h2 id="yLvlLbl">Level</h2><div class="seg" id="yLevels" role="group" aria-labelledby="yLvlLbl"></div><p class="hint" id="yLvlHint"></p></div>
         <div class="group"><h2 id="ySecsLbl">Speak for</h2><div class="seg" id="ySecs" role="group" aria-labelledby="ySecsLbl"></div></div>
         <div class="group"><h2 id="yPrepLbl">Think time</h2><div class="seg" id="yPreps" role="group" aria-labelledby="yPrepLbl"></div></div>
+        <div class="group"><h2 id="yLangLbl">Your English</h2><div class="seg" id="yLangs" role="group" aria-labelledby="yLangLbl"></div><p class="hint">Tells the speech engine which accent to expect. Pick the one closest to how you speak.</p></div>
         <div class="actions"><button class="btn" id="yDraw" type="button">Give me a question</button></div>
         <p class="hint" id="yStreak"></p>
       </div>
@@ -343,7 +344,7 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
       <p class="hint" id="yShareMsg" aria-live="polite"></p>
     </section>
 
-    <footer>Yap uses your browser’s built-in speech recognition (Chrome and Edge send the audio to Google, Safari to Apple; Firefox doesn’t support it). Nothing is sent to this site, and nothing is saved except a count of the days you practised, kept in this browser for your streak. With a Gemini key, the answer check sends the question and your transcript text (no audio) to Google.</footer>
+    <footer>Yap uses your browser’s built-in speech recognition (Chrome and Edge send the audio to Google, Safari to Apple; Firefox doesn’t support it). Nothing is sent to this site, and nothing is saved except a count of the days you practised, kept in this browser for your streak. With a Gemini key, your recording is sent to Google’s Gemini for an accurate transcript and the content check; on the API’s free tier Google may use it to improve its products.</footer>
   </div>
 </div>
 
@@ -856,7 +857,7 @@ function renderPanel(v){
 }
 
 /* ================= wire up ================= */
-window.PrepAI = {ready:aiReady, call:gemini, error:geminiError};
+window.PrepAI = {ready:aiReady, call:gemini, error:geminiError, audio:{decode:decodeTo16k, wav:encodeWav, b64:toB64, pauses:pauseStats}};
 document.addEventListener("app:leave",()=>{
   clearInterval(timer);
   if(S.recording){ S.recording=false; try{ rec&&rec.abort(); }catch{} try{ recorder&&recorder.state!=="inactive"&&recorder.stop(); }catch{} stopStream(); }
@@ -960,9 +961,11 @@ const YTOPICS = [
 ];
 const SECS = [{id:30,label:"30 s"},{id:60,label:"60 s"},{id:90,label:"90 s"}];
 const PREPS = [{id:0,label:"None"},{id:10,label:"10 s"},{id:30,label:"30 s"}];
+const LANGS = [{id:"en-IN",label:"India"},{id:"en-US",label:"US"},{id:"en-GB",label:"UK"}];
 
 /* ================= state ================= */
-const Y = {cat:"hr", lvl:"e", secs:60, prep:10, q:null, challenged:false, running:false, phase:"idle", started:0, last:null};
+let savedLang=null; try{ savedLang=localStorage.getItem("yap.lang"); }catch{}
+const Y = {lang:LANGS.some(l=>l.id===savedLang)?savedLang:"en-IN", cat:"hr", lvl:"e", secs:60, prep:10, q:null, challenged:false, running:false, phase:"idle", started:0, last:null};
 const used = {};
 const $ = id => document.getElementById(id);
 const hide = id => { $(id).hidden=true; }, show = id => { $(id).hidden=false; };
@@ -1047,7 +1050,7 @@ let rec=null, heard="", live="", lostFillers=0, errs=0, gapMs=0, endedAt=0, rest
 const SOUND_RE=/^(?:u+m+|u+h+|e+r+m*|a+h+|h+m+)$/;
 const norm = w => w.toLowerCase().replace(/[‘’]/g,"'").replace(/[^\w']/g,"");
 const soundCount = t => t.split(/\s+/).filter(w=>SOUND_RE.test(norm(w))).length;
-const lang = () => ([navigator.language,...(navigator.languages||[])].find(l=>typeof l==="string"&&/^en[-_]/i.test(l))||"en-US").replace("_","-");
+const lang = () => Y.lang;
 
 function append(t){
   const have=heard.split(/\s+/).filter(Boolean).map(norm), add=t.split(/\s+/).filter(Boolean);
@@ -1095,12 +1098,32 @@ function session(){
   try{ r.start(); }catch{ return false; }
   rec=r; return true;
 }
+let mediaRec=null, mediaStream=null, mediaChunks=[];
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const aiOn = () => !!(window.PrepAI && window.PrepAI.ready());
+async function startAudio(){
+  if(!aiOn() || !navigator.mediaDevices || !window.MediaRecorder) return false;
+  try{ mediaStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}); }catch{ return false; }
+  if(Y.phase!=="speak"){ stopAudioNow(); return false; }
+  const mime=["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg;codecs=opus"].find(t=>MediaRecorder.isTypeSupported(t));
+  try{ mediaRec=new MediaRecorder(mediaStream, mime?{mimeType:mime}:undefined); }catch{ try{ mediaRec=new MediaRecorder(mediaStream); }catch{ stopAudioNow(); return false; } }
+  mediaChunks=[]; mediaRec.ondataavailable=e=>{ if(e.data&&e.data.size) mediaChunks.push(e.data); };
+  mediaRec.start(1000); return true;
+}
+function stopAudioNow(){ try{ mediaRec&&mediaRec.state!=="inactive"&&mediaRec.stop(); }catch{} if(mediaStream){ mediaStream.getTracks().forEach(t=>t.stop()); mediaStream=null; } mediaRec=null; }
+async function stopAudio(){
+  if(!mediaRec){ stopAudioNow(); return null; }
+  const r=mediaRec;
+  const blob=await new Promise(res=>{ r.onstop=()=>res(new Blob(mediaChunks,{type:r.mimeType||"audio/webm"})); try{ r.stop(); }catch{ res(null); } });
+  stopAudioNow();
+  return blob&&blob.size?blob:null;
+}
 function stopRec(abort){ const r=rec; if(!r) return; try{ abort?r.abort():r.stop(); }catch{} if(abort) rec=null; }
 
 /* ================= round flow ================= */
 function startRound(){
   if(!Y.q) return;
-  clearInterval(timer); stopRec(true); if(checkCtl){ checkCtl.abort(); checkCtl=null; }
+  clearInterval(timer); stopRec(true); stopAudioNow(); if(checkCtl){ checkCtl.abort(); checkCtl=null; }
   hide("yResults"); show("yStage"); notice(""); $("yTranscript").textContent=""; $("yStop").hidden=false;
   $("yStage").scrollIntoView({behavior:reduceMotion()?"auto":"smooth",block:"start"});
   if(Y.prep>0){
@@ -1117,14 +1140,16 @@ function go(){
   $("yStageTitle").textContent=Y.q.t; $("yStageSub").textContent="You’re on. Keep talking until the chime; messy is fine.";
   $("yStop").textContent="Finish now"; $("yStop").onclick=()=>finish(false);
   let capturing=false;
-  if(SR && !envCheck().startsWith("You’re inside")){ capturing=true; Y.running=true; if(!session()){ capturing=false; } }
-  $("yTranscript").dataset.empty = capturing ? "Listening…" : "Speech recognition isn’t available here, so this is a timer-only rep.";
-  Y.running=true; Y.phase="speak"; Y.started=performance.now(); Y.capturing=capturing;
+  const audioOnly = aiOn() && isMobile; // phones can't share the mic between recording and live recognition
+  if(SR && !audioOnly && !envCheck().startsWith("You’re inside")){ capturing=true; Y.running=true; if(!session()){ capturing=false; } }
+  Y.running=true; Y.phase="speak"; Y.started=performance.now(); Y.capturing=capturing; Y.blob=null; Y.wavB64=null; Y.pause=null;
+  Y.audioOn=false; startAudio().then(ok=>{ Y.audioOn=ok; if(ok && !capturing) $("yTranscript").dataset.empty="Recording. Gemini writes up your transcript when time’s up."; });
+  $("yTranscript").dataset.empty = capturing ? "Listening…" : aiOn() ? "Starting the recording…" : "Speech recognition isn’t available here, so this is a timer-only rep.";
   let left=Y.secs; setClock(left,Y.secs);
   timer=setInterval(()=>{ left-=.25; setClock(left,Y.secs,left<=10?"warn":""); if(left<=0){ chime(); finish(true); } },250);
 }
 function abortRound(msg){
-  Y.running=false; Y.phase="idle"; clearInterval(timer); stopRec(true);
+  Y.running=false; Y.phase="idle"; clearInterval(timer); stopRec(true); stopAudioNow();
   notice(msg); $("yStop").hidden=true; setClock(0,1,"prep");
 }
 async function finish(full){
@@ -1135,8 +1160,11 @@ async function finish(full){
   await new Promise(r=>setTimeout(r,700)); // let the engine deliver its last final result
   if(live){ append(live); live=""; }
   stopRec(true);
+  const blob=await stopAudio();
   const m=score(heard,secs,full,lostFillers,{errs,gapMs});
-  m.capturing=Y.capturing; Y.last=m;
+  m.capturing=Y.capturing||!!blob; m.secs=secs; m.full=full;
+  Y.webM=m; Y.last=m;
+  if(blob && aiOn()){ Y.blob=blob; renderPending(); transcribeAndCheck(); return; }
   if(m.words>0) logRep();
   render(m);
 }
@@ -1213,7 +1241,7 @@ function band(s){
   if(s>=50) return ["Still in your head","You’re planning more than you’re talking. Trust the first thought and keep moving."];
   return ["Warm-up round","Everyone starts here. The only direction from this rep is up, so go again."];
 }
-function paceWord(w){ return w<110?"slow and steady":w<135?"relaxed and conversational":w<165?"the sweet spot":w<190?"high energy":"racing"; }
+function paceWord(w){ return w<110?"slow and steady":w<120?"relaxed":w<=160?"the sweet spot":w<190?"high energy":"racing"; }
 function paceLine(w){
   if(w<100) return "🐢 Slow. Calm is good, but listeners start to drift below about 110 words a minute.";
   if(w<120) return "🚶 Relaxed. Lift the energy slightly and you’re in the zone.";
@@ -1262,8 +1290,15 @@ function signals(m){
 /* ================= results ================= */
 const metric=(v,l,s)=>`<div class="metric"><div class="v">${v}</div><div class="l">${l}</div>${s?`<div class="s">${s}</div>`:""}</div>`;
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-function render(m){
+function renderPending(){
   hide("yStage"); show("yResults"); $("yShareMsg").textContent="";
+  $("yResults").scrollIntoView({behavior:reduceMotion()?"auto":"smooth",block:"start"});
+  $("yWarn").textContent="Gemini is listening to your recording for an accurate transcript, then checking your answer. This takes a few seconds.";
+  ["yVerdict","ySignalsWrap","yCardBtn","ySaid","yCheckBtn"].forEach(hide); $("yPace").parentElement.hidden=true; $("yTip").parentElement.hidden=true;
+  $("yMetrics").innerHTML=""; show("yCheck"); $("yCheckHead").textContent="Transcribing and checking…"; checkStatus("Working on it…");
+}
+function render(m,skipCheck){
+  hide("yStage"); show("yResults"); $("yShareMsg").textContent=""; $("yTip").parentElement.hidden=false;
   $("yResults").scrollIntoView({behavior:reduceMotion()?"auto":"smooth",block:"start"});
   const scored = m.words>0 && !m.tooShort && !m.incomplete;
   $("yWarn").textContent = !m.capturing ? "Speech recognition wasn’t available, so this rep was timer-only. It still counts as practice."
@@ -1271,7 +1306,7 @@ function render(m){
     : m.incomplete ? "You talked for a while, but the speech engine only passed on part of it, so there’s nothing fair to score. Check your microphone (a laptop’s built-in or a wired mic works best) and go again."
     : m.tooShort ? "Too short to score fairly. Aim for at least 20 seconds and we can read your pace properly."
     : m.unstable ? "Heads up: the speech service dropped out during this take, so it missed some words. Your real score is probably higher."
-    : m.wpm<85 ? `Only ${m.words} words were caught in ${m.dur} seconds. If you were speaking steadily, the browser’s speech engine probably missed some, which drags the pace score down. Open “What the speech engine heard” below to check. A wired or laptop mic in a quiet room helps.` : "";
+    : m.wpm<85 && m.source!=="gemini" ? `Only ${m.words} words were caught in ${m.dur} seconds. If you were speaking steadily, the browser’s speech engine probably missed some, which drags the pace score down. Open “What the speech engine heard” below to check. A wired or laptop mic in a quiet room helps.` : "";
   $("yVerdict").hidden=!scored; $("yPace").parentElement.hidden=!scored; $("ySignalsWrap").hidden=!scored;
   $("yCardBtn").hidden=!scored;
   if(scored){
@@ -1285,12 +1320,14 @@ function render(m){
     metric(m.words,"Words spoken"),
     metric(m.dur+" s","Time talking", m.full?"full time":""),
     scored?metric(m.wpm,"Words per minute",paceWord(m.wpm)):"",
-    metric(m.fillers,"Filler words", m.top.length?m.top.map(([k,n])=>`${esc(k)} × ${n}`).join(" · "):"none caught")
+    metric(m.fillers,"Filler words", m.top.length?m.top.map(([k,n])=>`${esc(k)} × ${n}`).join(" · "):"none caught"),
+    m.longPauses!=null?metric(m.longPauses,"Pauses of 1.5 s or more",m.longPauses>3?"quite a few":m.longPauses?"":"none"):""
   ].join("") : "";
   $("yTip").textContent=tipFor(m);
-  $("ySaidText").textContent=m.text||""; $("ySaid").hidden=!m.text;
+  $("ySaidText").textContent=m.raw||m.text||""; $("ySaid").hidden=!m.text;
+  $("ySaid").querySelector("summary").textContent = m.source==="gemini" ? "What you said (transcribed by Gemini)" : "What the speech engine heard";
   renderStreak();
-  checkIntro(m);
+  if(!skipCheck) checkIntro(m);
 }
 
 /* ================= answer check (Gemini, optional) ================= */
@@ -1312,18 +1349,55 @@ function checkIntro(m){
   if(!ai||!ai.ready()){ checkStatus("The score above can’t judge what you said. Add your Gemini API key and Yap will judge the content of every answer: facts and concepts for domain questions, substance and structure for HR and other questions.",true); return; }
   runCheck();
 }
-async function runCheck(){
-  const m=Y.last, ai=window.PrepAI; if(!m||!ai) return;
-  const c=catOf(Y.q.cat);
-  const prompt=`You are an MBA placement interviewer and a subject expert in ${c.label}. A candidate answered this interview question out loud. The text below is an automatic speech-to-text transcript, so ignore filler words and read obviously misheard words charitably (for example "four piece" means "4Ps").
+function judgePrompt(audio){
+  const c=catOf(Y.q.cat), accent={"en-IN":"Indian","en-US":"American","en-GB":"British"}[Y.lang]||"";
+  return `You are an MBA placement interviewer and a subject expert in ${c.label}. A candidate answered this interview question out loud.
 Question: "${Y.q.t}" (${c.label}, ${lvlOf(Y.q.lvl).label} level)
-Transcript: """${heard.slice(0,6000)}"""
+${audio
+  ? `The attached audio is the candidate's answer${accent?` (${accent} English speaker)`:""}. First transcribe it VERBATIM into "transcript": every word in order, keeping fillers (um, uh, like, basically, you know), repetitions and false starts, with normal punctuation. Do not correct grammar or add words they didn't say. Do not penalise accent. Then judge the answer from what they actually said.`
+  : `The text below is an automatic speech-to-text transcript, so ignore filler words and read obviously misheard words charitably (for example "four piece" means "4Ps").
+Transcript: """${heard.slice(0,6000)}"""`}
 Judge the CONTENT only, not delivery (pace and fillers are scored separately). ${AUTO_CHECK.has(Y.q.cat)
   ? `This is a domain question: check every definition, framework, fact and number for correctness.`
   : `This is not a factual question. Judge it as a placement panel would: does it answer what was asked, is it specific and credible, is it well structured, and does it suit the question type (for example, a crisp present-past-future flow for "tell me about yourself", situation-action-result for behavioural questions, a clear structure for cases and guesstimates). Do not demand examples or numbers the question doesn't need. List as "errors" only things that are wrong or would hurt the candidate, such as a weakness that is really a strength, a claim that contradicts itself, or a wrong concept or number.`}
 Be strict but fair, and never invent problems that are not in the transcript. Write for an Indian MBA student preparing for placements.
 Return JSON only, exactly this shape:
-{"verdict":"${AUTO_CHECK.has(Y.q.cat)?"Accurate|Mostly accurate|Partly accurate|Inaccurate|Off-topic":"Strong|Good|Average|Weak|Off-topic"}","accuracy":0-10,"summary":"one honest sentence","correct":["up to 3 things they got right"],"errors":[{"said":"short paraphrase of what they said that is wrong","fix":"the correct version"}],"missing":["up to 3 key points a strong answer would include"],"model_answer":"how a strong candidate would answer, under 80 words","follow_up":"one follow-up question the interviewer would likely ask next"}`;
+{${audio?`"transcript":"verbatim transcript",`:""}"verdict":"${AUTO_CHECK.has(Y.q.cat)?"Accurate|Mostly accurate|Partly accurate|Inaccurate|Off-topic":"Strong|Good|Average|Weak|Off-topic"}","accuracy":0-10,"summary":"one honest sentence","correct":["up to 3 things they got right"],"errors":[{"said":"short paraphrase of what they said that is wrong","fix":"the correct version"}],"missing":["up to 3 key points a strong answer would include"],"model_answer":"how a strong candidate would answer, under 80 words","follow_up":"one follow-up question the interviewer would likely ask next"}`;
+}
+async function transcribeAndCheck(){
+  const ai=window.PrepAI, m=Y.webM; if(!ai||!m) return;
+  hide("yCheckBtn");
+  const ctl=checkCtl=new AbortController();
+  try{
+    if(!Y.wavB64){
+      const x=await ai.audio.decode(Y.blob);
+      Y.pause=ai.audio.pauses(x); Y.wavB64=ai.audio.b64(ai.audio.wav(x,16000));
+    }
+    if(ctl!==checkCtl) return;
+    const v=await ai.call([{text:judgePrompt(true)},{inline_data:{mime_type:"audio/wav",data:Y.wavB64}}],ctl.signal);
+    if(ctl!==checkCtl) return;
+    const said=typeof v.transcript==="string"?v.transcript.trim():"";
+    let m2=m;
+    if(said){
+      // pace over the stretch from your first word to your last, so a slow start doesn't count as slow speech
+      const span=Y.pause&&Y.pause.total>3?Math.min(m.secs,Y.pause.total):m.secs;
+      m2=score(said,span,m.full,0,{errs:0,gapMs:0});
+      m2.capturing=true; m2.source="gemini"; m2.raw=said; m2.secs=span;
+    }
+    if(Y.pause) m2.longPauses=Y.pause.long;
+    Y.last=m2; if(m2.words>0) logRep();
+    render(m2,true); show("yCheck"); $("yCheckHead").textContent = AUTO_CHECK.has(Y.q.cat) ? "Is it correct?" : "How good was the answer?";
+    renderCheck(v);
+  }catch(e){
+    if(ctl!==checkCtl) return;
+    Y.last=m; if(m.words>0) logRep();
+    render(m,true); show("yCheck"); $("yCheckHead").textContent="Content check";
+    checkStatus(ai.error(e)+" The score above uses your browser’s transcript instead."); $("yCheckBtn").textContent="Try Gemini again"; show("yCheckBtn");
+  }finally{ if(ctl===checkCtl) checkCtl=null; }
+}
+async function runCheck(){
+  const m=Y.last, ai=window.PrepAI; if(!m||!ai) return;
+  const prompt=judgePrompt(false);
   hide("yCheckBtn"); checkStatus("Gemini is checking your answer…");
   const ctl=checkCtl=new AbortController();
   try{
@@ -1438,14 +1512,14 @@ function setTab(name,save=true){
 }
 document.addEventListener("app:leave",()=>{
   if($("yapApp").hidden) return;
-  clearInterval(timer); Y.running=false; Y.phase="idle"; stopRec(true); hide("yStage");
+  clearInterval(timer); Y.running=false; Y.phase="idle"; stopRec(true); stopAudioNow(); hide("yStage");
   if(checkCtl){ checkCtl.abort(); checkCtl=null; }
 });
-$("yCheckBtn").onclick=runCheck;
+$("yCheckBtn").onclick=()=>{ if(Y.blob && aiOn()) transcribeAndCheck(); else runCheck(); };
 document.addEventListener("ai:ready",()=>{ if(!$("yResults").hidden && !$("yCheck").hidden && Y.last && !checkCtl) checkIntro(Y.last); });
 
 /* ================= wire up ================= */
-fillCats(); segY($("yLevels"),YLEVELS,"lvl",lvlHint); segY($("ySecs"),SECS,"secs"); segY($("yPreps"),PREPS,"prep"); lvlHint(); renderStreak();
+fillCats(); segY($("yLevels"),YLEVELS,"lvl",lvlHint); segY($("ySecs"),SECS,"secs"); segY($("yPreps"),PREPS,"prep"); segY($("yLangs"),LANGS,"lang",()=>{ try{ localStorage.setItem("yap.lang",Y.lang); }catch{} }); lvlHint(); renderStreak();
 const env=envCheck(); $("yEnv").textContent=env;
 $("yCat").onchange=()=>{ Y.cat=$("yCat").value; };
 $("ySurprise").onclick=surprise;

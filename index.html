@@ -1068,8 +1068,15 @@ function paint(){
 function session(){
   let r; try{ r=new SR(); }catch{ return false; }
   r.continuous=true; r.interimResults=true; r.lang=lang(); try{ r.maxAlternatives=1; }catch{}
-  const done=new Set(), peak={};
-  r.onstart=()=>{ if(endedAt){ gapMs=Math.max(gapMs,performance.now()-endedAt); endedAt=0; } };
+  let done=new Set(), peak={}, wait=250;
+  // Chrome ends a listening session on its own (after about a minute, or a long silence) and sometimes
+  // refuses an immediate restart, so keep retrying until the round is over.
+  const restart=()=>{
+    if(!Y.running||rec!==r) return;
+    try{ r.start(); }
+    catch{ wait=Math.min(wait*2,2000); setTimeout(restart,wait); }
+  };
+  r.onstart=()=>{ done=new Set(); peak={}; wait=250; if(endedAt){ gapMs=Math.max(gapMs,performance.now()-endedAt); endedAt=0; } };
   r.onresult=e=>{
     if(rec!==r) return;
     let interim="";
@@ -1083,17 +1090,14 @@ function session(){
   r.onerror=e=>{
     if(rec!==r) return;
     if(e.error==="not-allowed"||e.error==="service-not-allowed"){ abortRound("Microphone or speech access is blocked. Allow the microphone for this site in your browser settings, then try again."); return; }
-    if(e.error==="audio-capture"){ abortRound("No microphone was found. Plug one in or check your system sound settings, then try again."); return; }
+    if(e.error==="audio-capture" && !restarts){ abortRound("No microphone was found. Plug one in or check your system sound settings, then try again."); return; }
     if(e.error!=="no-speech"&&e.error!=="aborted") errs++;
   };
   r.onend=()=>{
     if(rec!==r) return;
     if(live){ append(live); live=""; paint(); }
-    if(Y.running){
-      endedAt=performance.now();
-      if(++restarts>60){ errs++; return; }
-      setTimeout(()=>{ if(Y.running&&rec===r) session(); },250);
-    } else rec=null;
+    if(Y.running){ endedAt=performance.now(); restarts++; setTimeout(restart,250); }
+    else rec=null;
   };
   try{ r.start(); }catch{ return false; }
   rec=r; return true;

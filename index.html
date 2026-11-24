@@ -94,6 +94,7 @@ header.top{display:flex; justify-content:space-between; align-items:baseline; ga
 .talk:empty{display:none}
 .point{display:grid; grid-template-columns:38px 1fr; gap:10px; align-items:start; font-size:14.5px}
 .point .who{width:34px; height:34px; border-radius:50%; background:var(--felt); color:var(--felt-ink); display:grid; place-items:center; font-size:12px; font-weight:600}
+.point .via{display:block; margin-top:4px; font-size:11.5px; color:var(--muted)}
 .point p{margin:0; background:var(--surface); border:1px solid var(--line); border-radius:4px 14px 14px 14px; padding:9px 12px}
 
 /* stage */
@@ -168,6 +169,14 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
 .signals .ic{font-weight:700; text-align:center}
 .signals .ic.good{color:var(--ok)} .signals .ic.warn{color:var(--brass-ink)}
 .metric .s{font-size:12.5px; color:var(--muted); margin-top:2px}
+.coach{font-size:15.5px; line-height:1.6; max-width:72ch}
+.coach:empty{display:none}
+.coach h4{font-family:"Bricolage Grotesque",sans-serif; font-size:17px; margin:16px 0 6px}
+.coach p{margin:8px 0}
+.coach ul,.coach ol{margin:6px 0; padding-left:20px}
+.coach li{margin:4px 0}
+.coach blockquote{margin:8px 0; padding:2px 0 2px 12px; border-left:3px solid var(--brass); color:var(--muted)}
+.coach .you{margin:18px 0 8px; font-size:13.5px; color:var(--muted); font-weight:600}
 .badge{display:inline-block; padding:3px 10px; border-radius:999px; font-size:13.5px; font-weight:600; background:var(--brass-soft); color:var(--brass-ink); margin-right:8px}
 .badge.good{background:color-mix(in srgb,var(--ok) 15%,transparent); color:var(--ok)}
 .badge.bad{background:color-mix(in srgb,var(--alert) 13%,transparent); color:var(--alert)}
@@ -337,6 +346,12 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
         <div class="panel-head"><h3 id="yCheckHead">Content check</h3><button class="btn ghost small" id="yCheckBtn" type="button" hidden>Check my answer</button></div>
         <div id="yCheckOut"></div>
       </div>
+      <div class="panel" id="yCoach" hidden>
+        <div class="panel-head"><h3>Coach me</h3><button class="btn small" id="yCoachBtn" type="button">Coach me with Claude</button></div>
+        <p class="hint" id="yCoachHint">Your interview speech coach reads what you said and how you said it, then gives you content gaps, delivery feedback and what to fix first.</p>
+        <div class="coach" id="yCoachOut" aria-live="polite"></div>
+        <div class="actions" id="yCoachMore" hidden style="margin-top:12px"><button class="btn ghost small" id="yCoachModel" type="button">Show me a model answer</button></div>
+      </div>
       <details class="said" id="ySaid"><summary>What the speech engine heard</summary><p id="ySaidText"></p></details>
       <div class="actions" style="margin-top:22px">
         <button class="btn" id="yAgain" type="button">Try again</button>
@@ -440,7 +455,10 @@ function clearCfg(){
   const P=prov(); cfg.key=""; try{ localStorage.removeItem(P.store); sessionStorage.removeItem(P.store); }catch{}
 }
 const aiReady = () => !!(cfg.key && cfg.model);
-const audioAI = () => aiReady() && prov().audio;
+const hasP = id => !!(cfg.keys[id] && cfg.models[id]);
+// A saved Gemini key can always transcribe recordings, even when Claude is the one judging.
+const audioAI = () => hasP("gemini");
+const bothAI = () => hasP("gemini") && hasP("claude");
 function renderKeyState(){
   const el=$("keyState");
   el.textContent = aiReady() ? `${prov().name} connected, ${cfg.model}` : "not connected";
@@ -449,7 +467,7 @@ function renderKeyState(){
 function renderProvider(){
   const P=prov();
   [...$("provSeg").children].forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.p===cfg.provider)));
-  $("provHint").textContent=P.hint; $("keyLbl").textContent=`${P.name} API key`; $("keyIn").placeholder=P.placeholder;
+  $("provHint").textContent=P.hint+(bothAI()?" Both keys are saved, so GD participants mix Gemini and Claude, Gemini transcribes recordings, and Coach me uses Claude.":cfg.provider==="claude"&&!hasP("gemini")?" Save a Gemini key too and Gemini will transcribe your recordings for Claude.":""); $("keyLbl").textContent=`${P.name} API key`; $("keyIn").placeholder=P.placeholder;
   $("keyIn").value=cfg.key; $("remember").checked=cfg.remember;
   $("setMsg").textContent=`${P.keyMsg} Without “Remember”, it’s cleared when you close the tab.`;
   $("modelSel").innerHTML=""; if(cfg.model) fillModels([]);
@@ -464,12 +482,12 @@ function setProvider(id){
 }
 
 function aiError(e){
-  const msg=(e&&e.message)||"", N=prov().name, claude=cfg.provider==="claude";
+  const who=(e&&PROVIDERS[e.provider])?e.provider:cfg.provider, msg=(e&&e.message)||"", N=PROVIDERS[who].name, claude=who==="claude", model=cfg.models[who];
   if(e&&e.code==="aborted") return "Stopped.";
   if(e&&e.code==="no_key") return "Add a Gemini or Claude API key in AI settings to get this feedback.";
   if(e&&(e.code===401 || (e.code===400 && /api key/i.test(msg)))) return `That ${N} API key isn’t valid. Check it in AI settings.`;
   if(e&&e.code===403) return claude ? "This Claude key isn’t allowed to use that model. Check its workspace permissions in the Claude Console." : "This key isn’t allowed to call the Gemini API (check its API and website restrictions in Google Cloud).";
-  if(e&&e.code===404) return `The model “${cfg.model}” isn’t available to your key. Pick another model in AI settings.`;
+  if(e&&e.code===404) return `The ${N} model “${model}” isn’t available to your key. Pick another model in AI settings.`;
   if(e&&e.code===429) return claude ? "You’ve hit your Claude rate limit or spend limit. Wait a minute, or check your limits in the Claude Console." : "You’ve hit the Gemini rate limit or daily quota. Wait a minute, or switch to a lighter model in settings.";
   if(e&&e.code===402) return "Your Claude Console account is out of credits. Add credits in the Console’s billing settings.";
   if(e&&e.code==="refusal") return "Claude declined to answer this one. Try rephrasing, or switch model in AI settings.";
@@ -478,12 +496,15 @@ function aiError(e){
 }
 
 async function gemini(parts, signal){
-  if(!aiReady()) throw {code:"no_key"};
+  try{ return await geminiCall(parts, signal); }catch(e){ throw {...e, provider:"gemini"}; }
+}
+async function geminiCall(parts, signal){
+  if(!hasP("gemini")) throw {code:"no_key"};
   let res;
   try{
-    res = await fetch(`${API}/models/${encodeURIComponent(cfg.model)}:generateContent`,{
+    res = await fetch(`${API}/models/${encodeURIComponent(cfg.models.gemini)}:generateContent`,{
       method:"POST", signal,
-      headers:{"Content-Type":"application/json","x-goog-api-key":cfg.key},
+      headers:{"Content-Type":"application/json","x-goog-api-key":cfg.keys.gemini},
       body:JSON.stringify({contents:[{role:"user",parts}],generationConfig:{responseMimeType:"application/json",temperature:0.6}})
     });
   }catch(err){ if(err&&err.name==="AbortError") throw {code:"aborted"}; throw {code:"network",message:"network error"}; }
@@ -515,14 +536,18 @@ const parseJSON = text => {
   throw {code:"bad_json"};
 };
 async function claude(parts, signal){
+  try{ return await claudeCall(parts, signal); }catch(e){ throw {...e, provider:"claude"}; }
+}
+async function claudeCall(parts, signal){
+  if(!hasP("claude")) throw {code:"no_key"};
   if(parts.some(p=>p.inline_data)) throw {code:"no_audio",message:"Claude can’t take audio"};
   let Anthropic; try{ Anthropic=await loadSDK(); }catch{ throw {code:"network",message:"couldn’t load the Claude SDK"}; }
-  const client=claudeClient(Anthropic,cfg.key);
-  const req={model:cfg.model, max_tokens:16000,
+  const client=claudeClient(Anthropic,cfg.keys.claude);
+  const req={model:cfg.models.claude, max_tokens:16000,
     messages:[{role:"user",content:parts.map(p=>p.text).join("\n\n")+"\n\nReply with the JSON object only, with no text before or after it."}]};
   let msg;
   try{
-    msg = FALLBACK_MODELS.has(cfg.model)
+    msg = FALLBACK_MODELS.has(cfg.models.claude)
       ? await client.beta.messages.create({...req, betas:["server-side-fallback-2026-07-01"], fallbacks:"default"},{signal})
       : await client.messages.create(req,{signal});
   }catch(err){ throw claudeFail(Anthropic,err); }
@@ -538,7 +563,33 @@ async function listClaudeModels(key){
   catch(err){ throw claudeFail(Anthropic,err); }
   return out;
 }
-const ask = (parts,signal) => { if(!aiReady()) return Promise.reject({code:"no_key"}); return cfg.provider==="claude" ? claude(parts,signal) : gemini(parts,signal); };
+const callAI = (id,parts,signal) => id==="claude" ? claude(parts,signal) : gemini(parts,signal);
+const ask = (parts,signal) => { if(!aiReady()) return Promise.reject({code:"no_key"}); return callAI(cfg.provider,parts,signal); };
+
+// Gemini hears the recording and writes it down; whichever model is selected then judges the words.
+async function transcribeWithGemini(b64, signal, withDelivery){
+  const prompt=`Transcribe the attached audio of one speaker VERBATIM: every word in order, keeping fillers (um, uh, like, basically, you know), repetitions and false starts, with normal punctuation. Do not correct grammar or add words. The speaker may have an Indian English accent; transcribe what they said, not what you expect.${withDelivery?` Then describe the delivery you heard, one sentence each: pace, tone (confidence, energy, modulation) and fillers (which ones and roughly how often).`:""}
+Return JSON only: {"transcript":"..."${withDelivery?`,"delivery":{"pace":"","tone":"","fillers":""}`:""}}`;
+  const v=await gemini([{text:prompt},{inline_data:{mime_type:"audio/wav",data:b64}}],signal);
+  return {transcript:typeof v.transcript==="string"?v.transcript.trim():"", delivery:v.delivery&&typeof v.delivery==="object"?v.delivery:null};
+}
+
+// Coach me: a streamed Claude conversation, whichever provider is selected for scoring.
+async function coachStream(system, messages, onText, signal){
+  if(!hasP("claude")) throw {code:"no_key",provider:"claude"};
+  let Anthropic; try{ Anthropic=await loadSDK(); }catch{ throw {code:"network",message:"couldn’t load the Claude SDK",provider:"claude"}; }
+  const client=claudeClient(Anthropic,cfg.keys.claude), model=cfg.models.claude;
+  const req={model, max_tokens:64000, system, messages};
+  try{
+    const stream = FALLBACK_MODELS.has(model)
+      ? client.beta.messages.stream({...req, betas:["server-side-fallback-2026-07-01"], fallbacks:"default"},{signal})
+      : client.messages.stream(req,{signal});
+    stream.on("text",(delta,snapshot)=>onText(snapshot));
+    const msg=await stream.finalMessage();
+    if(msg.stop_reason==="refusal") throw {code:"refusal",provider:"claude"};
+    return msg.content.filter(b=>b.type==="text").map(b=>b.text).join("");
+  }catch(err){ if(err&&err.provider) throw err; throw {...claudeFail(Anthropic,err), provider:"claude"}; }
+}
 const listModelsFor = key => cfg.provider==="claude" ? listClaudeModels(key) : listModels(key);
 
 async function listModels(key){
@@ -571,7 +622,7 @@ async function connect(){
     if(!ms.length) throw {message:"no text models are available to this key"};
     fillModels(ms); cfg.model=$("modelSel").value; saveCfg(); renderKeyState();
     $("setMsg").textContent = claudeOn ? `Connected. Using ${cfg.model}. Opus gives the deepest critique; Sonnet and Haiku are faster and cheaper.` : `Connected. Using ${cfg.model}. Flash models are fast and cheap; Pro models give deeper critique but hit free-tier limits sooner.`;
-    $("settings").open=false;
+    $("settings").open=false; renderProvider();
     document.dispatchEvent(new CustomEvent("ai:ready"));
     if(S.topic && S.mode!=="initiate" && !S.points.length) draw(true);
   }catch(e){
@@ -617,7 +668,9 @@ function renderTalk(){
   S.points.slice(0,n).forEach((p,i)=>{
     const row=document.createElement("div"); row.className="point";
     const who=document.createElement("div"); who.className="who"; who.textContent="P"+((i%5)+1);
-    const txt=document.createElement("p"); txt.textContent=p.text; row.append(who,txt); el.appendChild(row);
+    const txt=document.createElement("p"); txt.textContent=p.text;
+    if(p.via && bothAI()){ const v=document.createElement("span"); v.className="via"; v.textContent="voiced by "+p.via; txt.appendChild(v); }
+    row.append(who,txt); el.appendChild(row);
   });
   drawSeats(spokenCount());
 }
@@ -627,6 +680,23 @@ async function fetchPoints(){
   if(S.mode==="initiate"){ renderTalk(); return true; }
   if(!aiReady()){ $("drawHint").textContent="“Enter mid-GD” and “Summarize” need a Gemini or Claude key to seat the other participants. Add one in AI settings above, or use “Initiate”."; renderTalk(); return false; }
   $("talk").innerHTML='<p class="status">Seating the other participants…</p>';
+  if(bothAI()){
+    // Two different models in the room: Claude opens with a frame, then the seats alternate.
+    const roles={claude:"one that frames or defines the topic, one that takes the opposite side to the room, and one that brings a concrete example or an approximate figure (say \"around\" for figures)",
+      gemini:"one in favour, one against, and one weak generic point a panel would ignore"};
+    const mk=id=>`You are simulating participants in an Indian MBA placement group discussion (GD).
+Topic: "${S.topic.t}"
+Difficulty: ${lvlLabel(S.lvl)}.
+Write 3 contributions by 3 different participants, as they would actually speak in the room: 25 to 40 words each, plain spoken English, no names, no numbering. In this order: ${roles[id]}.
+Return JSON only: {"points":[{"stance":"for|against|frame|data|weak","text":"..."}]}`;
+    const take=r=>r.status==="fulfilled"&&r.value&&Array.isArray(r.value.points)?r.value.points.filter(p=>p&&typeof p.text==="string").slice(0,3):[];
+    const [c,g]=await Promise.allSettled([callAI("claude",[{text:mk("claude")}]),callAI("gemini",[{text:mk("gemini")}])]);
+    const cp=take(c).map(p=>({...p,via:"Claude"})), gp=take(g).map(p=>({...p,via:"Gemini"}));
+    if(cp.length>=2&&gp.length>=2){
+      for(let i=0;i<3;i++){ if(cp[i]) S.points.push(cp[i]); if(gp[i]) S.points.push(gp[i]); }
+      renderTalk(); return true;
+    }
+  }
   const prompt=`You are simulating an Indian MBA placement group discussion (GD).
 Topic: "${S.topic.t}"
 Difficulty: ${lvlLabel(S.lvl)}.
@@ -637,7 +707,7 @@ Return JSON only: {"points":[{"stance":"for|against|data|weak","text":"..."}]}`;
     const v=await ask([{text:prompt}]);
     const pts=(v&&Array.isArray(v.points))?v.points.filter(p=>p&&typeof p.text==="string").slice(0,6):[];
     if(pts.length<3) throw {code:"bad_json"};
-    S.points=pts; renderTalk(); return true;
+    S.points=pts.map(p=>({...p,via:prov().name})); renderTalk(); return true;
   }catch(e){ $("talk").innerHTML=""; $("drawHint").textContent=aiError(e); drawSeats(0); return false; }
 }
 
@@ -881,34 +951,48 @@ async function evaluate(){
 
 let panelCtl=null;
 async function runPanel(){
-  const useAudio = !S.typed && !!S.wav;
-  const text = S.typed ? $("typed").value.trim() : S.wsTranscript;
+  const recorded = !S.typed && !!S.wav;
+  const hybrid = recorded && cfg.provider!=="gemini"; // Gemini transcribes, the selected model judges
+  const useAudio = recorded && !hybrid;
+  let text = S.typed ? $("typed").value.trim() : S.wsTranscript, heardBy=null;
   const third = S.mode==="initiate"?"Framing & initiative":S.mode==="addvalue"?"Building on others":"Coverage & balance";
   const pts = S.points.slice(0, S.mode==="addvalue"?3:6);
   const role = S.mode==="initiate" ? "The candidate INITIATED the GD (first speaker)."
     : S.mode==="addvalue" ? "The candidate ENTERED MID-DISCUSSION after these points:\n"+pts.map((p,i)=>`P${i+1}: ${p.text}`).join("\n")
     : "The candidate SUMMARIZED a discussion that contained these points:\n"+pts.map((p,i)=>`P${(i%5)+1}: ${p.text}`).join("\n");
   const dur = S.pause&&S.pause.total ? Math.round(S.pause.total) : Math.round(S.secs);
+  hide("panelBtn");
+  panelCtl=new AbortController();
+  if(hybrid){
+    $("panelOut").innerHTML='<p class="status">Gemini is transcribing your recording…</p>';
+    try{
+      heardBy=await transcribeWithGemini(toB64(S.wav),panelCtl.signal,true);
+      if(heardBy.transcript){ text=heardBy.transcript; renderLocal(text); }
+    }catch(e){ if(e&&e.code==="aborted"){ $("panelOut").innerHTML='<p class="status">Stopped.</p>'; show("panelBtn"); return; } heardBy=null; }
+  }
+  const d=heardBy&&heardBy.delivery;
   const input = useAudio
     ? `The attached audio is the candidate's contribution (about ${dur} seconds of speech). First transcribe it VERBATIM, keeping every filler (um, uh, like, basically, actually, you know) and false start. Then judge both content and delivery from the audio itself: pace, clarity, confidence, tone, energy and modulation. The candidate is an Indian English speaker; do not penalise accent, only clarity.`
+    : heardBy&&heardBy.transcript ? `Verbatim transcript of the candidate's contribution (about ${dur} seconds of speech), written by a speech model that heard the audio, fillers kept:\n"""${text}"""${d?`\nDelivery notes from that listener. Pace: ${d.pace||"n/a"} Tone: ${d.tone||"n/a"} Fillers: ${d.fillers||"n/a"}\nJudge delivery from these notes and the transcript. The candidate is an Indian English speaker; do not penalise accent, only clarity.`:""}`
     : S.typed ? `Candidate's words (typed, so delivery cannot be judged):\n"""${text}"""`
     : `Candidate's words from the browser's speech-to-text (filler words are often dropped and some words may be misheard; read them charitably, and judge delivery only as far as the words show it):\n"""${text}"""`;
-  const rubric = [`{"name":"Content & depth","score":0-10,"note":"one sentence"}`,`{"name":"Structure","score":0-10,"note":""}`,`{"name":"${third}","score":0-10,"note":""}`,`{"name":"Originality","score":0-10,"note":""}`, useAudio?`{"name":"Delivery","score":0-10,"note":""}`:`{"name":"Language","score":0-10,"note":""}`].join(",");
+  const rubric = [`{"name":"Content & depth","score":0-10,"note":"one sentence"}`,`{"name":"Structure","score":0-10,"note":""}`,`{"name":"${third}","score":0-10,"note":""}`,`{"name":"Originality","score":0-10,"note":""}`, useAudio||d?`{"name":"Delivery","score":0-10,"note":""}`:`{"name":"Language","score":0-10,"note":""}`].join(",");
   const prompt = `You are a strict panelist at an Indian B-school final placement group discussion. Score one candidate's contribution.
 Topic: "${S.topic.t}" (${catLabel(S.topic.cat)}, ${lvlLabel(S.topic.lvl)})
 ${role}
 ${input}
 Calibrate hard: 80+ means likely shortlisted at a top-10 B-school; generic, short or off-topic answers score under 50. For a summary, penalise adding new opinions or dropping a side. For initiation, reward a clear definition or frame and an agenda for the group.
 Return JSON only, exactly this shape:
-{"transcript":"${useAudio?"verbatim transcript":""}","overall":0-100,"verdict":"one honest sentence a panelist would write","rubric":[${rubric}],${useAudio?`"delivery":{"pace":"one sentence","tone":"one sentence on confidence, energy and modulation","fillers":"which fillers you heard and roughly how often"},`:""}"strongest_line":"a short phrase quoted from the candidate, or empty","missed_angles":["three specific angles, frameworks, data points or stakeholders they missed"],"better_version":"how a top candidate would have said it, under 60 words","next_drill":"one specific practice exercise for tomorrow"}`;
+{"transcript":"${useAudio?"verbatim transcript":""}","overall":0-100,"verdict":"one honest sentence a panelist would write","rubric":[${rubric}],${useAudio||d?`"delivery":{"pace":"one sentence","tone":"one sentence on confidence, energy and modulation","fillers":"which fillers you heard and roughly how often"},`:""}"strongest_line":"a short phrase quoted from the candidate, or empty","missed_angles":["three specific angles, frameworks, data points or stakeholders they missed"],"better_version":"how a top candidate would have said it, under 60 words","next_drill":"one specific practice exercise for tomorrow"}`;
   const parts=[{text:prompt}];
   if(useAudio) parts.push({inline_data:{mime_type:"audio/wav",data:toB64(S.wav)}});
 
-  hide("panelBtn");
-  $("panelOut").innerHTML='<p class="status">The panelist is '+(useAudio?"listening to":"reading")+' your answer…</p><button class="btn ghost small" id="stopPanel" type="button">Stop</button>';
-  panelCtl=new AbortController(); $("stopPanel").onclick=()=>panelCtl.abort();
+  const ctl=panelCtl;
+  $("panelOut").innerHTML='<p class="status">The panelist ('+prov().name+') is '+(useAudio?"listening to":"reading")+' your answer…</p><button class="btn ghost small" id="stopPanel" type="button">Stop</button>';
+  $("stopPanel").onclick=()=>ctl.abort();
   try{
-    const v=await ask(parts,panelCtl.signal);
+    const v=await ask(parts,ctl.signal);
+    if(d && !v.delivery) v.delivery=d;
     if(useAudio && typeof v.transcript==="string" && v.transcript.trim()) renderLocal(v.transcript.trim());
     else if(!text){ $("metrics").innerHTML=""; }
     renderPanel(v);
@@ -946,7 +1030,8 @@ function renderPanel(v){
 }
 
 /* ================= wire up ================= */
-window.PrepAI = {ready:aiReady, audioReady:audioAI, name:()=>prov().name, call:ask, error:aiError, audio:{decode:decodeTo16k, wav:encodeWav, b64:toB64, pauses:pauseStats}};
+window.PrepAI = {ready:aiReady, audioReady:audioAI, name:()=>prov().name, provider:()=>cfg.provider, hasClaude:()=>hasP("claude"), claudeModel:()=>cfg.models.claude,
+  call:ask, error:aiError, transcribe:transcribeWithGemini, coach:coachStream, audio:{decode:decodeTo16k, wav:encodeWav, b64:toB64, pauses:pauseStats}};
 document.addEventListener("app:leave",()=>{
   clearInterval(timer);
   if(S.recording){ S.recording=false; try{ rec&&rec.abort(); }catch{} try{ recorder&&recorder.state!=="inactive"&&recorder.stop(); }catch{} stopStream(); }
@@ -1103,6 +1188,7 @@ function pick(cat,lvl){
 }
 function showQ(q,challenged){
   if(checkCtl){ checkCtl.abort(); checkCtl=null; }
+  if(coachCtl){ coachCtl.abort(); coachCtl=null; }
   Y.q=q; Y.challenged=!!challenged;
   const c=catOf(q.cat);
   $("yTag").textContent=(challenged?"A friend challenged you · ":"")+`${c.emoji} ${c.label} · ${lvlOf(q.lvl).label}`;
@@ -1220,7 +1306,7 @@ function stopRec(abort){ const r=rec; if(!r) return; try{ abort?r.abort():r.stop
 /* ================= round flow ================= */
 function startRound(){
   if(!Y.q) return;
-  clearInterval(timer); stopRec(true); stopAudioNow(); if(checkCtl){ checkCtl.abort(); checkCtl=null; }
+  clearInterval(timer); stopRec(true); stopAudioNow(); if(checkCtl){ checkCtl.abort(); checkCtl=null; } if(coachCtl){ coachCtl.abort(); coachCtl=null; }
   hide("yResults"); show("yStage"); notice(""); $("yTranscript").textContent=""; $("yStop").hidden=false;
   $("yStage").scrollIntoView({behavior:reduceMotion()?"auto":"smooth",block:"start"});
   if(Y.prep>0){
@@ -1390,7 +1476,8 @@ const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 function renderPending(){
   hide("yStage"); show("yResults"); $("yShareMsg").textContent="";
   $("yResults").scrollIntoView({behavior:reduceMotion()?"auto":"smooth",block:"start"});
-  $("yWarn").textContent="Gemini is listening to your recording for an accurate transcript, then checking your answer. This takes a few seconds.";
+  $("yWarn").textContent = window.PrepAI.provider()==="gemini" ? "Gemini is listening to your recording for an accurate transcript, then checking your answer. This takes a few seconds." : `Gemini is writing an accurate transcript of your recording, then ${aiName()} checks your answer. This takes a few seconds.`;
+  hide("yCoach");
   ["yVerdict","ySignalsWrap","yCardBtn","ySaid","yCheckBtn"].forEach(hide); $("yPace").parentElement.hidden=true; $("yTip").parentElement.hidden=true;
   $("yMetrics").innerHTML=""; show("yCheck"); $("yCheckHead").textContent="Transcribing and checking…"; checkStatus("Working on it…");
 }
@@ -1424,7 +1511,82 @@ function render(m,skipCheck){
   $("ySaidText").textContent=m.raw||m.text||""; $("ySaid").hidden=!m.text;
   $("ySaid").querySelector("summary").textContent = m.source==="gemini" ? "What you said (transcribed by Gemini)" : "What the speech engine heard";
   renderStreak();
+  coachReset(m); $("yCoachBtn").textContent="Coach me with Claude";
   if(!skipCheck) checkIntro(m);
+}
+
+/* ================= Coach me (Claude) ================= */
+const COACH_SYSTEM = `You are an interview speech coach. The user practises spoken answers to MBA placement interview questions on a practice website. You cannot hear audio: the website gives you the question, a transcript of what they said, and delivery measurements (time spoken, words per minute, filler words, long pauses). It also says who wrote the transcript: Gemini writes a verbatim transcript with fillers kept; the browser's speech engine often drops fillers and mishears words, so read obvious mishearings charitably and don't blame the speaker for them.
+
+Show a short excerpt of the transcript first. Use the transcript and the measurements to assess pacing, pauses and filler words (um, like, you know). Then respond with:
+1. Content gaps: missing points, vague claims, factual or technical errors, lack of examples or measurable results.
+2. Delivery feedback: structure (e.g. STAR), clarity, concision, filler words, hedging, pacing, confidence, and tone suited to the role and interview type.
+3. Concrete, prioritized suggestions.
+
+Quote short snippets of their words when pointing out issues. Be honest, specific, and encouraging. Only when asked, give a model answer showing how to deliver it, grounded in the user's real experience rather than invented facts. If the role or question is unclear, state a reasonable assumption. If the transcript is empty or too garbled to judge, tell the user and ask them to retry.
+
+Format in plain Markdown with short "##" headings and bullet points. Keep feedback under about 400 words.`;
+let coachCtl=null, coachMsgs=[];
+function coachReset(m){
+  if(coachCtl){ coachCtl.abort(); coachCtl=null; }
+  coachMsgs=[]; $("yCoachOut").innerHTML=""; hide("yCoachMore");
+  const ok = m && m.capturing && m.words>=15;
+  $("yCoach").hidden=!ok; if(!ok) return;
+  const has=window.PrepAI&&window.PrepAI.hasClaude();
+  $("yCoachBtn").hidden=false; $("yCoachBtn").disabled=!has;
+  $("yCoachHint").textContent = has
+    ? `Your interview speech coach (${window.PrepAI.claudeModel()}) reads what you said and how you said it, then gives you content gaps, delivery feedback and what to fix first.`
+    : "Coach me uses Claude. Save a Claude API key in AI settings (you can keep Gemini selected for scoring) to get coached on every answer.";
+}
+function coachBrief(m){
+  const c=catOf(Y.q.cat), src = m.source==="gemini" ? "Gemini (verbatim, fillers kept)" : "the browser’s speech engine (fillers often dropped, some words misheard)";
+  const fill = m.fillers ? m.top.map(([k,n])=>`${k} × ${n}`).join(", ") : "none caught";
+  return `Question: "${Y.q.t}"
+Question type: ${c.label}, ${lvlOf(Y.q.lvl).label} level, MBA placement interview
+Transcript written by: ${src}
+Transcript: """${(m.raw||heard||m.text).slice(0,8000)}"""
+Delivery measurements: spoke for ${m.dur} s of the ${Y.secs} s allowed${m.full?" (used the full time)":""}; ${m.words} words; ${m.wpm} words per minute (comfortable range 120 to 160); filler words: ${fill}; pauses of 1.5 s or more: ${m.longPauses!=null?m.longPauses:"not measured"}.`;
+}
+// Minimal, safe Markdown: escape everything first, then add headings, lists, quotes and bold.
+function mdToHtml(md){
+  const inline=t=>esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\n]+)\*/g,"$1<i>$2</i>");
+  let html="", list=null;
+  const close=()=>{ if(list){ html+=`</${list}>`; list=null; } };
+  for(const raw of md.split("\n")){
+    const line=raw.trimEnd(); let m;
+    if(!line.trim()){ close(); continue; }
+    if((m=line.match(/^#{1,6}\s+(.*)/))){ close(); html+=`<h4>${inline(m[1])}</h4>`; continue; }
+    if((m=line.match(/^\s*[-*•]\s+(.*)/))){ if(list!=="ul"){ close(); html+="<ul>"; list="ul"; } html+=`<li>${inline(m[1])}</li>`; continue; }
+    if((m=line.match(/^\s*\d+[.)]\s+(.*)/))){ if(list!=="ol"){ close(); html+="<ol>"; list="ol"; } html+=`<li>${inline(m[1])}</li>`; continue; }
+    if((m=line.match(/^>\s?(.*)/))){ close(); html+=`<blockquote>${inline(m[1])}</blockquote>`; continue; }
+    close(); html+=`<p>${inline(line)}</p>`;
+  }
+  close(); return html;
+}
+async function coachTurn(ask){
+  const ai=window.PrepAI, m=Y.last; if(!ai||!m||coachCtl) return;
+  const first=!coachMsgs.length;
+  coachMsgs.push({role:"user",content:first?coachBrief(m):ask});
+  const out=$("yCoachOut"), done=out.innerHTML;
+  const block=document.createElement("div");
+  const head = first ? "" : `<p class="you">You asked: ${esc(ask.split(".")[0])}</p>`;
+  hide("yCoachBtn"); hide("yCoachMore");
+  out.innerHTML=done+head+'<p class="status">Your coach is reading your answer…</p>';
+  const ctl=coachCtl=new AbortController();
+  let pending=false, latest="";
+  const paint=()=>{ pending=false; if(ctl===coachCtl) out.innerHTML=done+head+mdToHtml(latest); };
+  try{
+    const text=await ai.coach(COACH_SYSTEM, coachMsgs, snap=>{ latest=snap; if(!pending){ pending=true; requestAnimationFrame(paint); } }, ctl.signal);
+    if(ctl!==coachCtl) return;
+    latest=text; paint();
+    coachMsgs.push({role:"assistant",content:text});
+    if(first) show("yCoachMore"); // the model answer is a one-time follow-up
+  }catch(e){
+    if(ctl!==coachCtl) return;
+    coachMsgs.pop();
+    out.innerHTML=done; const p=document.createElement("p"); p.className="status"; p.textContent=ai.error(e); out.appendChild(p);
+    if(first){ $("yCoachBtn").textContent="Try again"; show("yCoachBtn"); } else show("yCoachMore");
+  }finally{ if(ctl===coachCtl) coachCtl=null; }
 }
 
 /* ================= answer check (Gemini or Claude, optional) ================= */
@@ -1446,14 +1608,14 @@ function checkIntro(m){
   if(!ai||!ai.ready()){ checkStatus("The score above can’t judge what you said. Add a Gemini or Claude API key and Yap will judge the content of every answer: facts and concepts for domain questions, substance and structure for HR and other questions.",true); return; }
   runCheck();
 }
-function judgePrompt(audio){
+function judgePrompt(audio, transcript=heard){
   const c=catOf(Y.q.cat), accent={"en-IN":"Indian","en-US":"American","en-GB":"British"}[Y.lang]||"";
   return `You are an MBA placement interviewer and a subject expert in ${c.label}. A candidate answered this interview question out loud.
 Question: "${Y.q.t}" (${c.label}, ${lvlOf(Y.q.lvl).label} level)
 ${audio
   ? `The attached audio is the candidate's answer${accent?` (${accent} English speaker)`:""}. First transcribe it VERBATIM into "transcript": every word in order, keeping fillers (um, uh, like, basically, you know), repetitions and false starts, with normal punctuation. Do not correct grammar or add words they didn't say. Do not penalise accent. Then judge the answer from what they actually said.`
   : `The text below is an automatic speech-to-text transcript, so ignore filler words and read obviously misheard words charitably (for example "four piece" means "4Ps").
-Transcript: """${heard.slice(0,6000)}"""`}
+Transcript: """${transcript.slice(0,6000)}"""`}
 Judge the CONTENT only, not delivery (pace and fillers are scored separately). ${AUTO_CHECK.has(Y.q.cat)
   ? `This is a domain question: check every definition, framework, fact and number for correctness.`
   : `This is not a factual question. Judge it as a placement panel would: does it answer what was asked, is it specific and credible, is it well structured, and does it suit the question type (for example, a crisp present-past-future flow for "tell me about yourself", situation-action-result for behavioural questions, a clear structure for cases and guesstimates). Do not demand examples or numbers the question doesn't need. List as "errors" only things that are wrong or would hurt the candidate, such as a weakness that is really a strength, a claim that contradicts itself, or a wrong concept or number.`}
@@ -1471,9 +1633,15 @@ async function transcribeAndCheck(){
       Y.pause=ai.audio.pauses(x); Y.wavB64=ai.audio.b64(ai.audio.wav(x,16000));
     }
     if(ctl!==checkCtl) return;
-    const v=await ai.call([{text:judgePrompt(true)},{inline_data:{mime_type:"audio/wav",data:Y.wavB64}}],ctl.signal);
+    let v=null, said="";
+    if(ai.provider()==="gemini"){
+      v=await ai.call([{text:judgePrompt(true)},{inline_data:{mime_type:"audio/wav",data:Y.wavB64}}],ctl.signal);
+      said=typeof v.transcript==="string"?v.transcript.trim():"";
+    } else {
+      // Gemini writes the transcript; the selected model (Claude) judges it
+      said=(await ai.transcribe(Y.wavB64,ctl.signal,false)).transcript;
+    }
     if(ctl!==checkCtl) return;
-    const said=typeof v.transcript==="string"?v.transcript.trim():"";
     let m2=m;
     if(said){
       // pace over the stretch from your first word to your last, so a slow start doesn't count as slow speech
@@ -1484,17 +1652,19 @@ async function transcribeAndCheck(){
     if(Y.pause) m2.longPauses=Y.pause.long;
     Y.last=m2; if(m2.words>0) logRep();
     render(m2,true); show("yCheck"); $("yCheckHead").textContent = AUTO_CHECK.has(Y.q.cat) ? "Is it correct?" : "How good was the answer?";
-    renderCheck(v);
+    if(v){ renderCheck(v); return; }
+    checkCtl=null; checkIntro(m2); // the selected model judges Gemini's transcript (or the browser's, if Gemini heard nothing)
   }catch(e){
     if(ctl!==checkCtl) return;
     Y.last=m; if(m.words>0) logRep();
     render(m,true); show("yCheck"); $("yCheckHead").textContent="Content check";
+    if(ai.provider()!=="gemini" && e && e.provider==="gemini" && m.words>=15 && e.code!=="aborted"){ checkCtl=null; runCheck(); return; } // judge the browser's transcript instead
     checkStatus(ai.error(e)+" The score above uses your browser’s transcript instead."); $("yCheckBtn").textContent="Try again"; show("yCheckBtn");
   }finally{ if(ctl===checkCtl) checkCtl=null; }
 }
-async function runCheck(){
+async function runCheck(transcript){
   const m=Y.last, ai=window.PrepAI; if(!m||!ai) return;
-  const prompt=judgePrompt(false);
+  const prompt=judgePrompt(false, typeof transcript==="string"?transcript:(m.raw||heard));
   hide("yCheckBtn"); checkStatus(`${aiName()} is checking your answer…`);
   const ctl=checkCtl=new AbortController();
   try{
@@ -1611,9 +1781,12 @@ document.addEventListener("app:leave",()=>{
   if($("yapApp").hidden) return;
   clearInterval(timer); Y.running=false; Y.phase="idle"; stopRec(true); stopAudioNow(); hide("yStage");
   if(checkCtl){ checkCtl.abort(); checkCtl=null; }
+  if(coachCtl){ coachCtl.abort(); coachCtl=null; }
 });
 $("yCheckBtn").onclick=()=>{ if(Y.blob && aiOn()) transcribeAndCheck(); else runCheck(); };
-document.addEventListener("ai:ready",()=>{ if(!$("yResults").hidden && !$("yCheck").hidden && Y.last && !checkCtl) checkIntro(Y.last); });
+$("yCoachBtn").onclick=()=>coachTurn();
+$("yCoachModel").onclick=()=>coachTurn("Please give me a model answer showing how to deliver it, grounded in what I actually said about myself. Don’t invent facts; where you need a detail I didn’t give, mark it as a placeholder in [brackets].");
+document.addEventListener("ai:ready",()=>{ if(!$("yResults").hidden && Y.last){ if(!$("yCheck").hidden && !checkCtl) checkIntro(Y.last); if(!coachMsgs.length) coachReset(Y.last); } });
 
 /* ================= wire up ================= */
 fillCats(); segY($("yLevels"),YLEVELS,"lvl",lvlHint); segY($("ySecs"),SECS,"secs"); segY($("yPreps"),PREPS,"prep"); segY($("yLangs"),LANGS,"lang",()=>{ try{ localStorage.setItem("yap.lang",Y.lang); }catch{} }); lvlHint(); renderStreak();

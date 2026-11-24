@@ -49,6 +49,17 @@ Open **AI settings** at the top of the page (shared by both tabs) and pick a pro
 
 With Claude, the page uses the official Anthropic TypeScript SDK (bundled in `vendor/`, loaded only when Claude is selected) and turns on server-side refusal fallbacks for models that support them, so a declined request is retried on a fallback model instead of failing.
 
+### Using both keys together
+
+Save a key for each provider and the page uses both:
+
+- **Gemini transcribes, Claude judges.** With Claude selected and a Gemini key saved, Gemini turns your recording into a word-for-word transcript (and, in GD Room, delivery notes on pace, tone and fillers, because it can hear you). Claude then scores that transcript. If Gemini fails, Claude judges the browser's transcript instead.
+- **A mixed GD panel.** In GD Room, the other participants alternate between Claude and Gemini, so one model's habits don't set the tone of the whole discussion. Each point shows which model voiced it. Claude opens with a frame, an opposing view and a data point; Gemini adds a view for, one against and a weak point a panel would ignore.
+
+### Coach me (needs a Claude key)
+
+Under every Yap result there's a **Coach me with Claude** button. It sends the question, your transcript and your delivery numbers (time spoken, pace, fillers, long pauses, and who wrote the transcript) to Claude with an interview-coach brief. The coach replies, streamed as it writes, with content gaps, delivery feedback and prioritized fixes, quoting your own words. **Show me a model answer** then asks for a model answer built from what you actually said, with placeholders in [brackets] instead of invented facts. It works whichever provider is selected for scoring.
+
 ## Get a Claude API key
 
 1. Go to https://platform.claude.com, open **API keys** and create a key. Add credits under billing if your account has none.

@@ -7,7 +7,7 @@ Speaking practice in a single static page: no backend, no database, no login. It
 
 ## Yap: daily speaking
 
-- **Topics:** 180 built-in MBA placement prompts across 15 categories, each at Easy, Mid or Hard:
+- **Topics:** 225 built-in MBA placement prompts across 15 categories, at Easy, Mid, Hard or **Fry me** (see below):
   - Interview: HR and personal; why MBA, role and company; behavioural (STAR) stories.
   - Domain: marketing, finance, operations and supply chain, HR and people management, strategy and consulting, product and analytics, economy and current affairs.
   - Cases and thinking: mini cases, guesstimates, sell-it and pitch questions.
@@ -27,9 +27,21 @@ Speaking practice in a single static page: no backend, no database, no login. It
 - **Sharing:** *Challenge a friend* copies or shares a link like `?yap=fin-m1` that opens the same question. *Save score card* makes a 1080×1350 PNG.
 - **Streak:** the days you practised are kept in this browser only, to show a daily streak.
 
+## Fry me 🔥 (both tabs)
+
+The hardest level, picked like any other level (Surprise me never chooses it):
+
+- **Topics:** deliberately brutal questions, such as "Tell me about yourself without mentioning your degree, your job or your college", or "Daily users rose 20% and revenue fell 15% in the same month. Give three explanations and rank them." There are 45 for Yap and 18 for GD Room.
+- **Stricter delivery score (Yap):** full pace marks only at 130 to 155 words a minute, and fillers cost double.
+- **Word-by-word AI judging:** Gemini or Claude goes through every sentence and returns a **word-by-word audit** of up to 15 flawed phrases (filler, hedge, vague word, repetition, grammar slip, misused jargon, unsupported claim), each with the exact quote and a better wording. Scores are calibrated brutally: 70+ only for an answer the panel would hire on the spot.
+- **Sharper GD room:** the other participants are assertive and specific, and their weak point is a confident but subtly flawed argument for you to rebut.
+- **Coach me** goes line by line in Fry me too.
+
+Word-level judging needs an accurate transcript, so Fry me works best with a Gemini key saved (Gemini writes the transcript word for word, fillers included).
+
 ## GD Room
 
-- **Topics:** 60 built-in GD topics across 6 types and 3 difficulty levels.
+- **Topics:** 78 built-in GD topics across 6 types and 4 difficulty levels, including **Fry me**.
 - **Roles:** Initiate (60 s), Enter mid-GD (45 s, after 3 AI participants), Summarize (60 s, after 6 AI points).
 - **Recording:** with a Gemini key, your audio is recorded and converted to 16 kHz WAV in the browser. It's sent to Gemini in one call, which returns a verbatim transcript (fillers included), delivery notes and a panel scorecard.
 - **Local metrics:** pauses are measured locally from the audio itself. Pace, fillers, numbers, examples, signposts and stakeholders are computed from the transcript.
@@ -45,7 +57,7 @@ Open **AI settings** at the top of the page (shared by both tabs) and pick a pro
 | Transcribes your recording | Yes: word-for-word, with fillers and pauses | No: the Claude API doesn't take audio, so the browser transcribes and Claude judges the text |
 | Judges content (GD panel, Yap check) | Yes | Yes |
 | Cost | Free tier is enough for daily practice | Billed to your Claude Console account |
-| Default model | Gemini Flash | Claude Opus 5.5 (Sonnet and Haiku are faster and cheaper) |
+| Default model | Gemini Flash | Claude Sonnet 5.5 (Opus 5.5 gives deeper critique; Haiku 5.5 is cheapest) |
 
 With Claude, the page uses the official Anthropic TypeScript SDK (bundled in `vendor/`, loaded only when Claude is selected) and turns on server-side refusal fallbacks for models that support them, so a declined request is retried on a fallback model instead of failing.
 

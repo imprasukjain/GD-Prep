@@ -169,6 +169,8 @@ footer{margin-top:44px; color:var(--muted); font-size:13px; max-width:70ch}
 .signals .ic{font-weight:700; text-align:center}
 .signals .ic.good{color:var(--ok)} .signals .ic.warn{color:var(--brass-ink)}
 .metric .s{font-size:12.5px; color:var(--muted); margin-top:2px}
+.seg button.fry[aria-pressed="true"]{background:var(--alert); color:var(--bg)}
+.callout.fry{border-left-color:var(--alert)}
 .coach{font-size:15.5px; line-height:1.6; max-width:72ch}
 .coach:empty{display:none}
 .coach h4{font-family:"Bricolage Grotesque",sans-serif; font-size:17px; margin:16px 0 6px}
@@ -375,7 +377,7 @@ const CATS = [
   {id:"abstract",label:"Abstract"},{id:"biz",label:"Business & strategy"},{id:"econ",label:"Economy & policy"},
   {id:"tech",label:"Tech & AI"},{id:"social",label:"Social & ethics"},{id:"case",label:"Case GD"}
 ];
-const LEVELS = [{id:"e",label:"Warm-up"},{id:"m",label:"Standard"},{id:"h",label:"Final round"}];
+const LEVELS = [{id:"e",label:"Warm-up"},{id:"m",label:"Standard"},{id:"h",label:"Final round"},{id:"x",label:"Fry me 🔥"}];
 const MODES = [
   {id:"initiate",label:"Initiate",secs:60,hint:"You open the discussion. Define the topic, take a position or a frame, and set the agenda in one minute."},
   {id:"addvalue",label:"Enter mid-GD",secs:45,hint:"Three people have already spoken. Get in, build on or counter a specific point, and add something new in 45 seconds."},
@@ -401,7 +403,13 @@ const TOPICS = [
   ...T("social","h",["Should brands answer for labour practices deep in their supply chains?","Can a company afford to be ethical in a price-sensitive market?","Is meritocracy a myth?"]),
   ...T("case","e",["A café’s footfall fell 30% after a rival opened next door. What should the owner do in the next month?","A college fest’s main sponsor pulled out two weeks before the event. What now?"]),
   ...T("case","m",["An FMCG brand lost 4 share points to a D2C rival in 18 months. You are the leadership team. Plan the next 90 days.","An EV two-wheeler startup faces a battery-fire recall. Decide the response.","A regional airline’s on-time performance is the worst in the country. Fix it."]),
-  ...T("case","h",["Your edtech company must cut costs by 30% in six months without losing its brand. Where do you cut?","A tier-2 hospital chain wants to triple in size. Organic growth or acquisitions?","A family-run textile exporter is losing orders to Bangladesh and Vietnam. Rescue plan?"])
+  ...T("case","h",["Your edtech company must cut costs by 30% in six months without losing its brand. Where do you cut?","A tier-2 hospital chain wants to triple in size. Organic growth or acquisitions?","A family-run textile exporter is losing orders to Bangladesh and Vietnam. Rescue plan?"]),
+  ...T("abstract","x",["The emperor’s new clothes","A zero-sum game played by optimists","Infinity minus one"]),
+  ...T("biz","x",["India’s unicorns are mostly subsidised customer acquisition, not businesses.","Should Indian conglomerates be broken up by law?","Quick commerce destroys more value than it creates."]),
+  ...T("econ","x",["India should stop chasing GDP growth and target median income instead.","Universal basic income in India: fiscal suicide or overdue reform?","Should the RBI target the exchange rate instead of inflation?"]),
+  ...T("tech","x",["AI should be allowed to make final hiring and firing decisions.","India should ban open-weight frontier AI models.","Digital public infrastructure has made Indians more surveilled than citizens of any other democracy."]),
+  ...T("social","x",["Reservations in private-sector jobs: justice or a growth tax?","B-schools should drop CAT and admit by lottery above a cutoff.","Meritocracy is the most successful myth ever sold to the middle class."]),
+  ...T("case","x",["You are the board of a listed EV maker. A whistleblower says 2% of your batteries fail safety tests. Recall, fix quietly, or dispute it? Decide as a group.","A pharma company can save 10,000 lives in India now by selling a drug at a loss, or fund research that might save a million later. Choose.","Your edtech company’s best-selling course has a 6% completion rate and 40% margins. Keep selling it, fix it, or shut it down?"])
 ];
 
 /* ================= state ================= */
@@ -414,6 +422,18 @@ const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matche
 const catLabel = id => (CATS.find(c=>c.id===id)||{}).label||"";
 const lvlLabel = id => (LEVELS.find(l=>l.id===id)||{}).label||"";
 const modeOf = id => MODES.find(m=>m.id===id);
+
+/* ================= Fry me: strict, word-by-word judging ================= */
+const FRY_RULES = `FRY ME MODE. This is the hardest round. Judge like the most demanding panelist alive, and scrutinise every sentence and every word. Flag each filler (um, uh, like, basically, actually, you know, so), hedge (I think, maybe, kind of, sort of, I guess), vague or empty word (things, stuff, very, a lot, various, good), repetition, grammatical or tense error, misused jargon, unsupported claim, weak opening and weak closing. Calibrate brutally: 70 or more (7 or more out of 10) only for an answer you would hire on the spot; competent but ordinary answers score in the 40s or below. Never soften the verdict. Still never invent a flaw that is not in the words.
+Also return "word_audit": up to 15 items, in the order they occur, each {"quote":"the exact words, at most 8","issue":"what is wrong, in a few words","fix":"the better wording"}, covering every flawed phrase you found.`;
+const auditList = (o,items) => {
+  if(!Array.isArray(items)||!items.length) return;
+  const c=document.createElement("div"); c.className="callout fry"; const b=document.createElement("b"); b.textContent="Word-by-word audit"; const ul=document.createElement("ul"); ul.className="fix";
+  items.slice(0,15).forEach(a=>{ if(!a||typeof a!=="object"||!a.quote) return;
+    const li=document.createElement("li"), q=document.createElement("span"); q.className="was"; q.textContent=`“${a.quote}”`;
+    li.append(q, document.createTextNode(` ${a.issue?"("+a.issue+")":""}${a.fix?" → "+a.fix:""}`)); ul.appendChild(li); });
+  if(ul.children.length){ c.append(b,ul); o.appendChild(c); }
+};
 
 /* ================= AI config (Gemini or Claude) ================= */
 const API = "https://generativelanguage.googleapis.com/v1beta";
@@ -432,6 +452,7 @@ const cfg = {provider:"gemini", keys:{gemini:"",claude:""}, models:{gemini:"",cl
   get model(){ return this.models[this.provider]; }, set model(v){ this.models[this.provider]=v; },
   get remember(){ return this.kept[this.provider]; }, set remember(v){ this.kept[this.provider]=v; }};
 const prov = () => PROVIDERS[cfg.provider];
+const CLAUDE_DEFAULT = "claude-sonnet-5-5";
 function loadCfg(){
   try{
     const p=localStorage.getItem("gdroom.provider"); if(PROVIDERS[p]) cfg.provider=p;
@@ -440,6 +461,12 @@ function loadCfg(){
       else { const sk=sessionStorage.getItem(P.store); if(sk) cfg.keys[id]=sk; }
       cfg.models[id]=localStorage.getItem(P.mstore)||sessionStorage.getItem(P.mstore)||"";
     }
+    // One-time move to the new default: Opus 5.5 was only ever saved because it used to be the default.
+    if(cfg.models.claude==="claude-opus-5-5" && !localStorage.getItem("gdroom.cdefault.v2")){
+      cfg.models.claude=CLAUDE_DEFAULT;
+      [localStorage,sessionStorage].forEach(st=>{ if(st.getItem("gdroom.cmodel")) st.setItem("gdroom.cmodel",CLAUDE_DEFAULT); });
+    }
+    localStorage.setItem("gdroom.cdefault.v2","1");
   }catch{}
 }
 function saveCfg(){
@@ -608,7 +635,7 @@ function fillModels(ms){
   const sel=$("modelSel"); sel.innerHTML="";
   if(cfg.model && !ms.some(m=>m.id===cfg.model)) ms=[{id:cfg.model,label:cfg.model+" (saved)"},...ms];
   ms.forEach(m=>{ const o=document.createElement("option"); o.value=m.id; o.textContent=`${m.label} (${m.id})`; sel.appendChild(o); });
-  if(!cfg.model && cfg.provider==="claude"){ const pick=ms.find(m=>m.id==="claude-opus-5-5")||ms[0]; if(pick) cfg.model=pick.id; }
+  if(!cfg.model && cfg.provider==="claude"){ const pick=ms.find(m=>m.id===CLAUDE_DEFAULT)||ms[0]; if(pick) cfg.model=pick.id; }
   if(!cfg.model){ const pick = ms.find(m=>/flash/.test(m.id)&&!/lite/.test(m.id)&&!/(exp|preview)/.test(m.id)) || ms.find(m=>/flash/.test(m.id)&&!/lite/.test(m.id)) || ms.find(m=>/flash/.test(m.id)) || ms[0]; if(pick) cfg.model=pick.id; }
   sel.value=cfg.model;
 }
@@ -621,7 +648,7 @@ async function connect(){
     cfg.key=key; cfg.remember=$("remember").checked;
     if(!ms.length) throw {message:"no text models are available to this key"};
     fillModels(ms); cfg.model=$("modelSel").value; saveCfg(); renderKeyState();
-    $("setMsg").textContent = claudeOn ? `Connected. Using ${cfg.model}. Opus gives the deepest critique; Sonnet and Haiku are faster and cheaper.` : `Connected. Using ${cfg.model}. Flash models are fast and cheap; Pro models give deeper critique but hit free-tier limits sooner.`;
+    $("setMsg").textContent = claudeOn ? `Connected. Using ${cfg.model}. Sonnet 5.5 is the default: fast and sharp. Opus gives the deepest critique; Haiku is the cheapest.` : `Connected. Using ${cfg.model}. Flash models are fast and cheap; Pro models give deeper critique but hit free-tier limits sooner.`;
     $("settings").open=false; renderProvider();
     document.dispatchEvent(new CustomEvent("ai:ready"));
     if(S.topic && S.mode!=="initiate" && !S.points.length) draw(true);
@@ -635,7 +662,7 @@ async function connect(){
 function seg(el,items,key,onPick){
   el.innerHTML="";
   items.forEach(it=>{
-    const b=document.createElement("button"); b.type="button"; b.textContent=it.label; b.setAttribute("aria-pressed",String(S[key]===it.id));
+    const b=document.createElement("button"); b.type="button"; b.textContent=it.label; b.setAttribute("aria-pressed",String(S[key]===it.id)); if(it.id==="x") b.className="fry";
     b.addEventListener("click",()=>{ S[key]=it.id; [...el.children].forEach(c=>c.setAttribute("aria-pressed","false")); b.setAttribute("aria-pressed","true"); onPick&&onPick(); });
     el.appendChild(b);
   });
@@ -686,7 +713,7 @@ async function fetchPoints(){
       gemini:"one in favour, one against, and one weak generic point a panel would ignore"};
     const mk=id=>`You are simulating participants in an Indian MBA placement group discussion (GD).
 Topic: "${S.topic.t}"
-Difficulty: ${lvlLabel(S.lvl)}.
+Difficulty: ${lvlLabel(S.lvl)}.${S.topic.lvl==="x"?" This is a brutal final-round GD: every participant is sharp, assertive and specific, and any weak point is a confident but subtly flawed argument a strong candidate should rebut.":""}
 Write 3 contributions by 3 different participants, as they would actually speak in the room: 25 to 40 words each, plain spoken English, no names, no numbering. In this order: ${roles[id]}.
 Return JSON only: {"points":[{"stance":"for|against|frame|data|weak","text":"..."}]}`;
     const take=r=>r.status==="fulfilled"&&r.value&&Array.isArray(r.value.points)?r.value.points.filter(p=>p&&typeof p.text==="string").slice(0,3):[];
@@ -699,7 +726,7 @@ Return JSON only: {"points":[{"stance":"for|against|frame|data|weak","text":"...
   }
   const prompt=`You are simulating an Indian MBA placement group discussion (GD).
 Topic: "${S.topic.t}"
-Difficulty: ${lvlLabel(S.lvl)}.
+Difficulty: ${lvlLabel(S.lvl)}.${S.topic.lvl==="x"?" This is a brutal final-round GD: every participant is sharp, assertive and specific, and any weak point is a confident but subtly flawed argument a strong candidate should rebut.":""}
 Write 6 contributions by different participants, in the order the discussion would unfold, as they would actually speak in the room: 25 to 40 words each, plain spoken English, no names, no numbering.
 Mix: two in favour or one framing, two against or a different frame, one that brings a concrete example or an approximate figure (say "around" for figures), and one weak generic point a panel would ignore.
 Return JSON only: {"points":[{"stance":"for|against|data|weak","text":"..."}]}`;
@@ -981,9 +1008,9 @@ async function runPanel(){
 Topic: "${S.topic.t}" (${catLabel(S.topic.cat)}, ${lvlLabel(S.topic.lvl)})
 ${role}
 ${input}
-Calibrate hard: 80+ means likely shortlisted at a top-10 B-school; generic, short or off-topic answers score under 50. For a summary, penalise adding new opinions or dropping a side. For initiation, reward a clear definition or frame and an agenda for the group.
+${S.topic.lvl==="x"?FRY_RULES+"\n":""}Calibrate hard: 80+ means likely shortlisted at a top-10 B-school; generic, short or off-topic answers score under 50. For a summary, penalise adding new opinions or dropping a side. For initiation, reward a clear definition or frame and an agenda for the group.
 Return JSON only, exactly this shape:
-{"transcript":"${useAudio?"verbatim transcript":""}","overall":0-100,"verdict":"one honest sentence a panelist would write","rubric":[${rubric}],${useAudio||d?`"delivery":{"pace":"one sentence","tone":"one sentence on confidence, energy and modulation","fillers":"which fillers you heard and roughly how often"},`:""}"strongest_line":"a short phrase quoted from the candidate, or empty","missed_angles":["three specific angles, frameworks, data points or stakeholders they missed"],"better_version":"how a top candidate would have said it, under 60 words","next_drill":"one specific practice exercise for tomorrow"}`;
+{"transcript":"${useAudio?"verbatim transcript":""}","overall":0-100,"verdict":"one honest sentence a panelist would write","rubric":[${rubric}],${useAudio||d?`"delivery":{"pace":"one sentence","tone":"one sentence on confidence, energy and modulation","fillers":"which fillers you heard and roughly how often"},`:""}"strongest_line":"a short phrase quoted from the candidate, or empty","missed_angles":["three specific angles, frameworks, data points or stakeholders they missed"],"better_version":"how a top candidate would have said it, under 60 words","next_drill":"one specific practice exercise for tomorrow"${S.topic.lvl==="x"?`,"word_audit":[{"quote":"","issue":"","fix":""}]`:""}}`;
   const parts=[{text:prompt}];
   if(useAudio) parts.push({inline_data:{mime_type:"audio/wav",data:toB64(S.wav)}});
 
@@ -1027,11 +1054,12 @@ function renderPanel(v){
   }
   call("How a top candidate would say it", v.better_version);
   call("Tomorrow’s drill", v.next_drill);
+  auditList(o, v.word_audit);
 }
 
 /* ================= wire up ================= */
 window.PrepAI = {ready:aiReady, audioReady:audioAI, name:()=>prov().name, provider:()=>cfg.provider, hasClaude:()=>hasP("claude"), claudeModel:()=>cfg.models.claude,
-  call:ask, error:aiError, transcribe:transcribeWithGemini, coach:coachStream, audio:{decode:decodeTo16k, wav:encodeWav, b64:toB64, pauses:pauseStats}};
+  call:ask, error:aiError, transcribe:transcribeWithGemini, coach:coachStream, fryRules:FRY_RULES, auditList, audio:{decode:decodeTo16k, wav:encodeWav, b64:toB64, pauses:pauseStats}};
 document.addEventListener("app:leave",()=>{
   clearInterval(timer);
   if(S.recording){ S.recording=false; try{ rec&&rec.abort(); }catch{} try{ recorder&&recorder.state!=="inactive"&&recorder.stop(); }catch{} stopStream(); }
@@ -1086,7 +1114,7 @@ const YCATS = [
   {id:"abstract",emoji:"🌀",label:"Abstract GD topics",group:"gd"},
   {id:"random",emoji:"🎲",label:"Random & fun",group:"gd"}
 ];
-const YLEVELS = [{id:"e",label:"Easy",hint:"Warm-up. Get the basics out cleanly."},{id:"m",label:"Mid",hint:"Interview standard. Structure your answer: point, reason, example."},{id:"h",label:"Hard",hint:"Final round. Take a clear position and defend it."}];
+const YLEVELS = [{id:"e",label:"Easy",hint:"Warm-up. Get the basics out cleanly."},{id:"m",label:"Mid",hint:"Interview standard. Structure your answer: point, reason, example."},{id:"h",label:"Hard",hint:"Final round. Take a clear position and defend it."},{id:"x",label:"Fry me 🔥",hint:"Insane questions and strict judging: every word you say gets audited, fillers and hedges cost double."}];
 const Q = (cat,lvl,list) => list.map((t,i)=>({id:`${cat}-${lvl}${i}`,cat,lvl,t}));
 const YTOPICS = [
   ...Q("hr","e",["Tell me about yourself.","Walk me through your CV in one minute.","What are your three biggest strengths? Back each with proof.","What do you do outside work and studies?"]),
@@ -1133,7 +1161,22 @@ const YTOPICS = [
   ...Q("abstract","h",["Every exit is an entry somewhere else.","The map is not the territory.","Rust","A bridge too far"]),
   ...Q("random","e",["Tea or coffee? Defend your choice.","Describe your perfect weekend.","What’s the best advice you’ve ever received?","What’s a hobby you’d recommend to everyone?"]),
   ...Q("random","m",["Startup or big company: where would you rather start your career?","Would you rather be a great speaker or a great listener?","What’s one skill every manager should learn?","Which business leader would you invite to dinner, and why?"]),
-  ...Q("random","h",["Is work-life balance a myth?","Are grades a good measure of talent?","Is hustle culture good for young professionals?","Would you rather be respected or liked at work?"])
+  ...Q("random","h",["Is work-life balance a myth?","Are grades a good measure of talent?","Is hustle culture good for young professionals?","Would you rather be respected or liked at work?"]),
+  ...Q("hr","x",["Your CV is average and so is your college. Convince me in one minute that you are not an average hire.","Tell me about yourself without mentioning your degree, your job or your college.","Give me your three biggest weaknesses. None of them can be a disguised strength."]),
+  ...Q("why","x",["We hired five people from your campus last year and four left within a year. Why will you be different?","Name our biggest strategic mistake of the last three years and how you would have avoided it.","Your profile fits our competitor better than us. Change my mind."]),
+  ...Q("behav","x",["Tell me about a time you were wrong, it cost someone else, and you never fixed it.","Describe a time you broke a rule to get a result. Would you do it again here?","Tell me about a decision most of your team opposed, and walk me through every trade-off."]),
+  ...Q("mkt","x",["Launch a premium bottled water brand where tap water is free and trusted. Price it, position it and defend it.","Our brand has 90% awareness and 4% market share. Diagnose it without data, then tell me what data you would ask for.","Convince a CMO who built her career on TV to cut the entire TV budget."]),
+  ...Q("fin","x",["Value a loss-making quick-commerce company that will never be profitable as it runs today. Would you buy it at any price?","Depreciation rises by 100 crore at a 25% tax rate. Walk me through all three statements.","Interest rates and the rupee move against us at the same time. Rebuild our hedging strategy in a minute."]),
+  ...Q("ops","x",["Cut a hospital’s emergency waiting time in half without hiring a single doctor.","Design a supply chain for a product that spoils in six hours and sells in 200 cities.","Our factory runs at 98% utilisation and still misses deliveries. Explain why that is not a contradiction."]),
+  ...Q("hrm","x",["Lay off 20% of a team on Monday and keep the other 80% fully motivated by Friday. Walk me through it.","Your star performer is toxic and the CEO’s favourite. What do you do?","Design a pay system nobody can game. Then tell me how you would game it."]),
+  ...Q("strat","x",["Should a market leader with 70% share deliberately disrupt its own core business? Make the call.","Name a company everyone admires and argue it will be irrelevant in ten years.","Three founders, one decision: grow, sell or shut down. Advise them with no numbers."]),
+  ...Q("prod","x",["Daily users rose 20% and revenue fell 15% in the same month. Give three explanations and rank them.","Kill one WhatsApp feature and defend why everyone is better off.","Design a product for people who refuse to use smartphones, and say how you would measure success."]),
+  ...Q("econ","x",["Argue that inflation is good for India right now, without sounding wrong.","India cuts every import tariff to zero tomorrow. Who wins, who loses, and who lies about it?","Explain why a strong GDP number can be bad news for the average Indian household."]),
+  ...Q("case","x",["A profitable chai chain with 300 outlets wants to IPO next year, and the founder wants to triple outlets first. Talk him out of it, or into it.","An airline’s best-known route loses money on every ticket and the CEO refuses to cut it. Find the hidden reason and decide.","Your client grew revenue 30% and is about to run out of cash. Diagnose and fix it."]),
+  ...Q("guess","x",["Estimate the revenue Indian offices lose every year to people searching for a meeting room.","How many words are spoken in India in a day? Structure it, then sanity-check it.","Size the umbrella market in Mumbai, then tell me which of your assumptions is weakest."]),
+  ...Q("sell","x",["Sell me a pen I already hate.","Convince me to pay 5,000 rupees for a bottle of air.","Pitch a product that failed in the market as if it is about to succeed."]),
+  ...Q("abstract","x",["Nothing","The sound of one hand clapping","Black"]),
+  ...Q("random","x",["In this interview, argue that interviews are a terrible way to hire.","Is it ethical to fake confidence?","Argue against the last strong opinion you held."])
 ];
 const SECS = [{id:30,label:"30 s"},{id:60,label:"60 s"},{id:90,label:"90 s"}];
 const PREPS = [{id:0,label:"None"},{id:10,label:"10 s"},{id:30,label:"30 s"}];
@@ -1163,7 +1206,7 @@ function envCheck(){
 function segY(el,items,key,onPick){
   el.innerHTML="";
   items.forEach(it=>{
-    const b=document.createElement("button"); b.type="button"; b.textContent=it.label; b.setAttribute("aria-pressed",String(Y[key]===it.id));
+    const b=document.createElement("button"); b.type="button"; b.textContent=it.label; b.setAttribute("aria-pressed",String(Y[key]===it.id)); if(it.id==="x") b.className="fry";
     b.addEventListener("click",()=>{ Y[key]=it.id; [...el.children].forEach(c=>c.setAttribute("aria-pressed","false")); b.setAttribute("aria-pressed","true"); onPick&&onPick(); });
     el.appendChild(b);
   });
@@ -1412,8 +1455,10 @@ function score(text,secs,full,lost,cap){
   if(!words) return {words:0,dur,wpm:0,fillers:0,top:[],score:0,tooShort:false,incomplete:false,unstable,text:""};
   // 55 pts pace (full marks 120-160 wpm, zero at 60 or 240), 25 pts fillers (zero at 16 per 100 words), 20 pts staying power
   const rate=fillers/words*100;
-  const pace = wpm<120 ? Math.max(0,55*(wpm-60)/60) : wpm<=160 ? 55 : Math.max(0,55*(1-(wpm-160)/80));
-  const clean=Math.max(0,25-rate*25/16);
+  const fry = Y.q && Y.q.lvl==="x"; // Fry me: full pace marks only at 130-155 wpm, and fillers cost double
+  const [lo,hi] = fry ? [130,155] : [120,160];
+  const pace = wpm<lo ? Math.max(0,55*(wpm-60)/(lo-60)) : wpm<=hi ? 55 : Math.max(0,55*(1-(wpm-hi)/80));
+  const clean=Math.max(0,25-rate*25/(fry?8:16));
   const stay = full ? 20 : (words>=8&&secs>=8 ? 15+Math.min(5,secs/Y.secs*5) : Math.min(15,secs/8*15));
   const total=Math.max(0,Math.min(100,Math.round(pace+clean+stay)));
   return {words,dur,wpm,fillers,rate,top,score:total,tooShort,incomplete,unstable,text:ws.join(" "),ws,full};
@@ -1545,7 +1590,7 @@ function coachBrief(m){
 Question type: ${c.label}, ${lvlOf(Y.q.lvl).label} level, MBA placement interview
 Transcript written by: ${src}
 Transcript: """${(m.raw||heard||m.text).slice(0,8000)}"""
-Delivery measurements: spoke for ${m.dur} s of the ${Y.secs} s allowed${m.full?" (used the full time)":""}; ${m.words} words; ${m.wpm} words per minute (comfortable range 120 to 160); filler words: ${fill}; pauses of 1.5 s or more: ${m.longPauses!=null?m.longPauses:"not measured"}.`;
+${Y.q.lvl==="x"?"Mode: FRY ME. Be ruthless and go line by line: quote and fix every filler, hedge, vague word, repetition and grammar slip, and say plainly where the answer would lose the job. Stay specific, and still say what worked.\n":""}Delivery measurements: spoke for ${m.dur} s of the ${Y.secs} s allowed${m.full?" (used the full time)":""}; ${m.words} words; ${m.wpm} words per minute (comfortable range 120 to 160); filler words: ${fill}; pauses of 1.5 s or more: ${m.longPauses!=null?m.longPauses:"not measured"}.`;
 }
 // Minimal, safe Markdown: escape everything first, then add headings, lists, quotes and bold.
 function mdToHtml(md){
@@ -1619,9 +1664,9 @@ Transcript: """${transcript.slice(0,6000)}"""`}
 Judge the CONTENT only, not delivery (pace and fillers are scored separately). ${AUTO_CHECK.has(Y.q.cat)
   ? `This is a domain question: check every definition, framework, fact and number for correctness.`
   : `This is not a factual question. Judge it as a placement panel would: does it answer what was asked, is it specific and credible, is it well structured, and does it suit the question type (for example, a crisp present-past-future flow for "tell me about yourself", situation-action-result for behavioural questions, a clear structure for cases and guesstimates). Do not demand examples or numbers the question doesn't need. List as "errors" only things that are wrong or would hurt the candidate, such as a weakness that is really a strength, a claim that contradicts itself, or a wrong concept or number.`}
-Be strict but fair, and never invent problems that are not in the transcript. Write for an Indian MBA student preparing for placements.
+Be strict but fair, and never invent problems that are not in the transcript. Write for an Indian MBA student preparing for placements.${Y.q.lvl==="x"?"\n"+window.PrepAI.fryRules:""}
 Return JSON only, exactly this shape:
-{${audio?`"transcript":"verbatim transcript",`:""}"verdict":"${AUTO_CHECK.has(Y.q.cat)?"Accurate|Mostly accurate|Partly accurate|Inaccurate|Off-topic":"Strong|Good|Average|Weak|Off-topic"}","accuracy":0-10,"summary":"one honest sentence","correct":["up to 3 things they got right"],"errors":[{"said":"short paraphrase of what they said that is wrong","fix":"the correct version"}],"missing":["up to 3 key points a strong answer would include"],"model_answer":"how a strong candidate would answer, under 80 words","follow_up":"one follow-up question the interviewer would likely ask next"}`;
+{${Y.q.lvl==="x"?`"word_audit":[{"quote":"","issue":"","fix":""}],`:""}${audio?`"transcript":"verbatim transcript",`:""}"verdict":"${AUTO_CHECK.has(Y.q.cat)?"Accurate|Mostly accurate|Partly accurate|Inaccurate|Off-topic":"Strong|Good|Average|Weak|Off-topic"}","accuracy":0-10,"summary":"one honest sentence","correct":["up to 3 things they got right"],"errors":[{"said":"short paraphrase of what they said that is wrong","fix":"the correct version"}],"missing":["up to 3 key points a strong answer would include"],"model_answer":"how a strong candidate would answer, under 80 words","follow_up":"one follow-up question the interviewer would likely ask next"}`;
 }
 async function transcribeAndCheck(){
   const ai=window.PrepAI, m=Y.webM; if(!ai||!m) return;
@@ -1692,6 +1737,7 @@ function renderCheck(v){
   const call=(title,body)=>{ if(!body) return; const c=document.createElement("div"); c.className="callout"; const b=document.createElement("b"); b.textContent=title; const d=document.createElement("div"); d.textContent=body; c.append(b,d); o.appendChild(c); };
   call("A strong answer, in under 80 words",v.model_answer);
   call("Be ready for this follow-up",v.follow_up);
+  window.PrepAI.auditList(o, v.word_audit);
   const n=document.createElement("p"); n.className="hint"; n.textContent=`${aiName()} can be wrong too. Double-check anything that surprises you before an interview.`; o.appendChild(n);
 }
 function animateScore(target){
